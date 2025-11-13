@@ -76,9 +76,9 @@ export const getRobotConfigAtTime = async (
     console.log("Found matching config entry from:", metadata.configTimestamp);
     console.log("Config entry details:", metadata);
 
-    // Return both the config and its metadata
+    // Return both the config and its metadata - extract only robotConfig
     return {
-      config: activeConfigEntry.old,
+      config: activeConfigEntry.old?.robotConfig || activeConfigEntry.old,
       metadata
     };
   } catch (error) {
