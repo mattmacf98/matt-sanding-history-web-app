@@ -86,7 +86,9 @@ export const getPassConfigComparison = (
   configMetadata: Map<string, RobotConfigMetadata>
 ): { prevPass: Pass | null; configChanged: boolean } => {
   const currentPassIndex = allPasses.findIndex(p => p.pass_id === pass.pass_id);
-  const prevPass = currentPassIndex > 0 ? allPasses[currentPassIndex - 1] : null;
+  const prevPass = (currentPassIndex > -1 && currentPassIndex < allPasses.length - 1)
+    ? allPasses[currentPassIndex + 1]
+    : null;
 
   if (!prevPass) {
     return { prevPass: null, configChanged: false };

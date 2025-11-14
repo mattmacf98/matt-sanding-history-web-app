@@ -691,17 +691,16 @@ const AppInterface: React.FC<AppViewProps> = ({
                                             }}>
                                               <h4 style={{ margin: 0 }}>Config information</h4>
                                               {(() => {
-                                                const metadata = configMetadata.get(pass.pass_id);
-                                                if (!metadata) return null;
-
                                                 const flatPasses = Object.values(groupedPasses).flat();
                                                 const { prevPass, configChanged } = getPassConfigComparison(pass, flatPasses, configMetadata);
 
-                                                // If prevPass exists but its metadata is missing, fetch it.
+                                                // If the previous pass exists but we don't have its metadata yet,
+                                                // trigger a fetch. The UI will update on the next render cycle.
                                                 if (prevPass && !configMetadata.has(prevPass.pass_id) && !loadingConfigMetadata.has(prevPass.pass_id)) {
                                                   fetchConfigMetadata(pass, prevPass);
                                                 }
 
+                                                // Only show the badge if the metadata for both passes has been loaded and they are different.
                                                 if (configChanged) {
                                                   return (
                                                     <div style={{
