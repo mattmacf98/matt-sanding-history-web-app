@@ -250,6 +250,21 @@ const deleteMod = (config: any, path: string): void => {
     current = current[key];
   }
 
+  // Handle deletion from an array if the parent is an array
+  const lastKey = keys[keys.length - 1];
+  const arrayMatch = lastKey.match(/([^.[]+)\[(\w+)=(.+)\]/);
+  if (arrayMatch && Array.isArray(current)) {
+    const propName = arrayMatch[2];
+    const propValue = arrayMatch[3];
+    const indexToDelete = current.findIndex(
+      (item: any) => item[propName] === propValue
+    );
+    if (indexToDelete > -1) {
+      current.splice(indexToDelete, 1);
+    }
+    return;
+  }
+
   delete current[keys[keys.length - 1]];
 };
 
@@ -261,6 +276,7 @@ export const applyFragmentMods = (config: any): any => {
     return config;
   }
 
+  // Use a deep copy to avoid mutating the original object
   const newConfig = JSON.parse(JSON.stringify(config));
 
   for (const fragmentMod of newConfig.fragment_mods) {
@@ -268,39 +284,15 @@ export const applyFragmentMods = (config: any): any => {
       for (const mod of fragmentMod.mods) {
         if (mod.$set) {
           for (const path in mod.$set) {
-            const componentMatch = path.match(/components\.([^.]+)\.(.+)/);
-            if (componentMatch) {
-              const componentName = componentMatch[1];
-              const restOfPath = componentMatch[2];
-              const component = newConfig.components?.find(
-                (c: any) => c.name === componentName
-              );
-              if (component) {
-                applyMod(component, restOfPath, mod.$set[path]);
-              }
-            } else {
-              applyMod(newConfig, path, mod.$set[path]);
-            }
+            applyMod(newConfig, path, mod.$set[path]);
           }
         } else if (mod.$unset) {
           for (const path in mod.$unset) {
-            // We can reuse the same component matching logic for unsetting
-            const componentMatch = path.match(/components\.([^.]+)\.(.+)/);
-            if (componentMatch) {
-              const componentName = componentMatch[1];
-              const restOfPath = componentMatch[2];
-              const component = newConfig.components?.find(
-                (c: any) => c.name === componentName
-              );
-              if (component) {
-                deleteMod(component, restOfPath);
-              }
-            } else {
-              deleteMod(newConfig, path);
-            }
+            // The path for unsetting a component is 'components[name=motor]'
+            // which needs to be handled by deleteMod directly.
+            deleteMod(newConfig, path);
           }
         }
-        // TODO: Handle other operations like $unset if necessary
       }
     }
   }
