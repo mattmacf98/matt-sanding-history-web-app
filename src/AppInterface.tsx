@@ -421,7 +421,7 @@ const AppInterface: React.FC<AppViewProps> = ({
       }
 
       // Download the config
-      downloadRobotConfig(result.config, passId, pass.start, machineId);
+      downloadRobotConfig(result.config, passId, result.metadata.configTimestamp, machineId);
     } catch (error) {
       console.error('Error downloading config:', error);
       alert('Failed to download configuration. Please try again.');

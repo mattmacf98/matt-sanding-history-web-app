@@ -48,31 +48,37 @@ export const getRobotConfigAtTime = async (
     // This state is stored in the `old` field of the NEXT NEWER entry in the history.
     const lastChangeIndex = history.indexOf(lastChangeEntry);
 
-    let configEntry;
+    let baseConfig: any;
     if (lastChangeIndex > 0) {
       // The next newer entry is at the previous index because the list is sorted newest to oldest.
-      configEntry = history[lastChangeIndex - 1];
+      const configEntry = history[lastChangeIndex - 1];
+      const robotPart = configEntry?.old;
+
+      if (!robotPart || !robotPart.robotConfig) {
+        console.error("Invalid config structure in history entry (from history)");
+        return null;
+      }
+      // The config is nested under robotConfig
+      baseConfig = robotPart.robotConfig.fields || robotPart.robotConfig;
     } else {
       // If the last change is the most recent one in history (index 0),
-      // we can't get its "after" state from a newer entry.
-      // In this case, we assume the main part's config is the current state.
-      // We fetch the robot part directly to get the absolute latest config.
-      const part = await viamClient.appClient.getRobotPart(partId);
-      configEntry = { old: part }; // Adapt it to look like a history entry
+      // the active config is the absolute latest. Fetch the part directly.
+      const robotPartResponse = await viamClient.appClient.getRobotPart(partId);
+
+      if (!robotPartResponse?.part) {
+        console.error("Could not fetch current robot part");
+        return null;
+      }
+      // The config is on the .part property of the response
+      baseConfig = robotPartResponse.part.robotConfig;
     }
 
-    if (!configEntry || !configEntry.old) {
+    if (!baseConfig) {
+      console.error("Could not derive a base config.");
       return null;
     }
 
-    const robotPart = configEntry.old as any;
-    if (!robotPart || !robotPart.robotConfig) {
-      console.error("Invalid config structure in history entry");
-      return null;
-    }
-
-    // The actual config is in the fields property. Apply fragment mods to get the final state.
-    const baseConfig = robotPart.robotConfig.fields || robotPart.robotConfig;
+    // Apply fragment mods to get the final state.
     const finalConfig = applyFragmentMods(baseConfig);
     const metadata = extractConfigMetadata(lastChangeEntry);
 
@@ -121,24 +127,29 @@ export const getPassConfigComparison = (
 export const downloadRobotConfig = (
   config: any,
   passId: string,
-  timestamp: Date,
+  configTimestamp: Date,
   machineId: string
 ): void => {
   try {
     // Helper to pad numbers with a leading zero
     const pad = (num: number) => num.toString().padStart(2, '0');
 
-    // Format the timestamp for filename using local time (YYYY-MM-DD-HH-MM-SS)
-    const year = timestamp.getFullYear();
-    const month = pad(timestamp.getMonth() + 1); // getMonth() is zero-based
-    const day = pad(timestamp.getDate());
-    const hours = pad(timestamp.getHours());
-    const minutes = pad(timestamp.getMinutes());
-    const seconds = pad(timestamp.getSeconds());
+    // Format using local time for user-friendliness
+    const year = configTimestamp.getFullYear();
+    const month = pad(configTimestamp.getMonth() + 1);
+    const day = pad(configTimestamp.getDate());
+    const hours = configTimestamp.getHours();
+    const minutes = pad(configTimestamp.getMinutes());
+    const seconds = pad(configTimestamp.getSeconds());
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    const hours12 = hours % 12 || 12;
 
     const dateStr = `${year}-${month}-${day}`;
-    const timeStr = `${hours}-${minutes}-${seconds}`;
-    const fileName = `config-${machineId.substring(0, 8)}-pass-${passId.substring(0, 8)}-${dateStr}-${timeStr}.json`;
+    const timeStr = `${hours12}-${minutes}-${seconds}${ampm}`;
+    const fileName = `config-${machineId.substring(0, 8)}-pass-${passId.substring(
+      0,
+      8
+    )}-${dateStr}-${timeStr}.json`;
 
     // Create a blob with formatted JSON
     const jsonStr = JSON.stringify(config, null, 2);
@@ -179,7 +190,7 @@ const applyMod = (config: any, path: string, value: any): void => {
     const key = keys[i];
 
     // Handle array pathing like "components[name=my-component]"
-    const arrayMatch = key.match(/(\w+)\[(\w+)=(.+)\]/);
+    const arrayMatch = key.match(/([^.[]+)\[(\w+)=(.+)\]/);
     if (arrayMatch) {
       const arrayName = arrayMatch[1];
       const propName = arrayMatch[2];
@@ -206,6 +217,43 @@ const applyMod = (config: any, path: string, value: any): void => {
 };
 
 /**
+ * Applies a single $unset modification to the configuration object.
+ */
+const deleteMod = (config: any, path: string): void => {
+  const keys = path.split('.');
+  let current = config;
+
+  for (let i = 0; i < keys.length - 1; i++) {
+    const key = keys[i];
+    const arrayMatch = key.match(/([^.[]+)\[(\w+)=(.+)\]/);
+    if (arrayMatch) {
+      const arrayName = arrayMatch[1];
+      const propName = arrayMatch[2];
+      const propValue = arrayMatch[3];
+      if (current[arrayName] && Array.isArray(current[arrayName])) {
+        const foundItem = current[arrayName].find(
+          (item: any) => item[propName] === propValue
+        );
+        if (foundItem) {
+          current = foundItem;
+          continue;
+        } else {
+          // Path doesn't exist, so nothing to delete.
+          return;
+        }
+      }
+    }
+    if (typeof current[key] === 'undefined') {
+      // Path doesn't exist, so nothing to delete.
+      return;
+    }
+    current = current[key];
+  }
+
+  delete current[keys[keys.length - 1]];
+};
+
+/**
  * Merges fragment modifications into a base robot configuration.
  */
 export const applyFragmentMods = (config: any): any => {
@@ -220,9 +268,7 @@ export const applyFragmentMods = (config: any): any => {
       for (const mod of fragmentMod.mods) {
         if (mod.$set) {
           for (const path in mod.$set) {
-            // A more robust solution would be needed to find components by name
-            // This is a simplified example.
-            const componentMatch = path.match(/components\.(\w+)\.(.+)/);
+            const componentMatch = path.match(/components\.([^.]+)\.(.+)/);
             if (componentMatch) {
               const componentName = componentMatch[1];
               const restOfPath = componentMatch[2];
@@ -236,12 +282,29 @@ export const applyFragmentMods = (config: any): any => {
               applyMod(newConfig, path, mod.$set[path]);
             }
           }
+        } else if (mod.$unset) {
+          for (const path in mod.$unset) {
+            // We can reuse the same component matching logic for unsetting
+            const componentMatch = path.match(/components\.([^.]+)\.(.+)/);
+            if (componentMatch) {
+              const componentName = componentMatch[1];
+              const restOfPath = componentMatch[2];
+              const component = newConfig.components?.find(
+                (c: any) => c.name === componentName
+              );
+              if (component) {
+                deleteMod(component, restOfPath);
+              }
+            } else {
+              deleteMod(newConfig, path);
+            }
+          }
         }
         // TODO: Handle other operations like $unset if necessary
       }
     }
   }
-  // delete newConfig.fragment_mods; // Optional: clean up
-  // delete newConfig.fragments; // Optional: clean up
+  delete newConfig.fragment_mods;
+  delete newConfig.fragments;
   return newConfig;
 };
