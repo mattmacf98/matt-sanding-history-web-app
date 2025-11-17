@@ -33,3 +33,21 @@ export interface RobotConfigMetadata {
   editedBy?: { email: string };
   hasOldConfig: boolean;
 }
+
+export interface RobotComponent {
+  name: string;
+  type: string;
+  attributes?: Record<string, any>;
+  [key: string]: any;
+}
+
+export interface FragmentMod {
+  mods: Array<{ $set?: Record<string, any>; $unset?: Record<string, boolean> }>;
+}
+
+export interface RobotConfig {
+  components: RobotComponent[];
+  fragment_mods?: FragmentMod[];
+  fragments?: any[];
+  [key: string]: any;
+}

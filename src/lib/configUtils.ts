@@ -1,5 +1,5 @@
 import * as VIAM from "@viamrobotics/sdk";
-import { Pass, RobotConfigMetadata } from '../types';
+import { Pass, RobotConfigMetadata, RobotConfig } from '../types';
 
 /**
  * Extract metadata from a robot part history entry
@@ -23,7 +23,7 @@ export const getRobotConfigAtTime = async (
   viamClient: VIAM.ViamClient,
   partId: string,
   timestamp: Date
-): Promise<{ config: any; metadata: RobotConfigMetadata } | null> => {
+): Promise<{ config: RobotConfig; metadata: RobotConfigMetadata } | null> => {
   try {
     // Fetch the robot part history. The history is sorted from newest to oldest.
     const history = await viamClient.appClient.getRobotPartHistory(partId);
@@ -182,7 +182,7 @@ export const downloadRobotConfig = (
  * This is a simplified implementation and may need to be expanded
  * to handle all pathing cases (e.g., finding components by name).
  */
-const applyMod = (config: any, path: string, value: any): void => {
+const applyMod = (config: RobotConfig, path: string, value: any): void => {
   const keys = path.split('.');
   let current = config;
 
@@ -219,7 +219,7 @@ const applyMod = (config: any, path: string, value: any): void => {
 /**
  * Applies a single $unset modification to the configuration object.
  */
-const deleteMod = (config: any, path: string): void => {
+const deleteMod = (config: RobotConfig, path: string): void => {
   const keys = path.split('.');
   let current = config;
 
@@ -271,7 +271,7 @@ const deleteMod = (config: any, path: string): void => {
 /**
  * Merges fragment modifications into a base robot configuration.
  */
-export const applyFragmentMods = (config: any): any => {
+export const applyFragmentMods = (config: RobotConfig): RobotConfig => {
   if (!config.fragment_mods || !Array.isArray(config.fragment_mods)) {
     return config;
   }
