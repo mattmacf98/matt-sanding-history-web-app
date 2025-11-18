@@ -81,6 +81,14 @@ const PassFiles: React.FC<PassFilesProps> = ({
     });
   }, [passFiles, debouncedFileSearchInputs, passId]);
 
+  const filesCountDisplay = useMemo(() => {
+    const searchTerm = (debouncedFileSearchInputs[passId] || '').toLowerCase();
+    if (searchTerm) {
+      return `(showing ${filteredPassFiles.length} of ${passFiles.length})`;
+    }
+    return `(${passFiles.length})`;
+  }, [passFiles.length, filteredPassFiles.length, debouncedFileSearchInputs, passId]);
+
   const isLoading = fetchTimestamp && fetchTimestamp > pass.start;
 
   if (isLoading && passFiles.length === 0) {
@@ -123,7 +131,7 @@ const PassFiles: React.FC<PassFilesProps> = ({
         }}>
           ▶
         </span>
-        Files captured during this pass ({passFiles.length})
+        Files captured during this pass {filesCountDisplay}
       </h4>
 
       {expandedFiles.has(passId) && passFiles.length > 0 && (
@@ -174,8 +182,11 @@ const PassFiles: React.FC<PassFilesProps> = ({
                       borderBottom: fileIndex < filteredFiles.length - 1 ? '1px solid #e5e7eb' : 'none',
                       fontSize: '13px',
                       minWidth: '280px',
-                      boxSizing: 'border-box'
+                      boxSizing: 'border-box',
+                      transition: 'background-color 0.2s'
                     }}
+                    onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#f3f4f6'; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = '#f9fafb'; }}
                   >
                     <div style={{
                       display: 'flex',
@@ -926,7 +937,7 @@ const AppInterface: React.FC<AppViewProps> = ({
                                                       <span style={{ fontSize: '12px', color: '#6b7280', marginLeft: '8px' }}>
                                                         ({formatTimeDifference(
                                                           passEnd.getTime(),
-                                                          afterImage.metadata?.timeRequested?.toDate()?.getTime() || passEnd.getTime()
+                                                          afterImage.metadata?.toDate()?.getTime() || passEnd.getTime()
                                                         )} before end)
                                                       </span>
                                                     </div>
