@@ -78,6 +78,19 @@ export const getRobotConfigAtTime = async (
       return null;
     }
 
+    // Sort fragment mods for consistent diffing
+    if (baseConfig.fragment_mods && Array.isArray(baseConfig.fragment_mods)) {
+      for (const fragmentMod of baseConfig.fragment_mods) {
+        if (fragmentMod.mods && Array.isArray(fragmentMod.mods)) {
+          fragmentMod.mods.sort((a: any, b: any) => {
+            const keyA = a.$set ? Object.keys(a.$set)[0] : Object.keys(a.$unset)[0];
+            const keyB = b.$set ? Object.keys(b.$set)[0] : Object.keys(b.$unset)[0];
+            return keyA.localeCompare(keyB);
+          });
+        }
+      }
+    }
+
     // Apply fragment mods to get the final state.
     const finalConfig = applyFragmentMods(baseConfig);
     const metadata = extractConfigMetadata(lastChangeEntry);
