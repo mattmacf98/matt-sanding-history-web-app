@@ -13,6 +13,255 @@ import { getBeforeAfterImages, getStepVideos } from './lib/passUtils';
 import { formatDurationMs } from './lib/uiUtils';
 import { PassNote, createNotesManager } from './lib/notesManager';
 
+interface PassFilesProps {
+  pass: Pass;
+  files: Map<string, VIAM.dataApi.BinaryData>;
+  viamClient: VIAM.ViamClient;
+  fetchTimestamp: Date | null;
+  expandedFiles: Set<string>;
+  toggleFilesExpansion: (passId: string) => void;
+  fileSearchInputs: Record<string, string>;
+  handleFileSearchChange: (passId: string, value: string) => void;
+  debouncedFileSearchInputs: Record<string, string>;
+}
+
+const PassFiles: React.FC<PassFilesProps> = ({
+  pass,
+  files,
+  fetchTimestamp,
+  expandedFiles,
+  toggleFilesExpansion,
+  fileSearchInputs,
+  handleFileSearchChange,
+  debouncedFileSearchInputs,
+}) => {
+  const passId = pass.pass_id;
+
+  const passFiles = useMemo(() => {
+    const passStart = new Date(pass.start);
+    const passEnd = new Date(pass.end);
+
+    const passTimeRangeFileIDS: string[] = [];
+    files.forEach((file, binaryDataId) => {
+      if (file.metadata?.timeRequested) {
+        const fileTime = file.metadata.timeRequested.toDate();
+        if (fileTime >= passStart && fileTime <= passEnd) {
+          passTimeRangeFileIDS.push(binaryDataId);
+        }
+      }
+    });
+
+    const passFileIDs: string[] = [];
+    if (pass.pass_id && pass.pass_id.trim() !== '') {
+      files.forEach((file, binaryDataId) => {
+        if (file.metadata?.fileName && file.metadata.fileName.split("/").filter((y) => y === pass.pass_id).length > 0) {
+          passFileIDs.push(binaryDataId);
+        }
+      });
+    }
+
+    const ids = new Set([...passFileIDs, ...passTimeRangeFileIDS]);
+    return Array.from(files.values())
+      .filter((x) => ids.has(x.metadata!.binaryDataId))
+      .sort((a, b) => {
+        const timeA = a.metadata!.timeRequested!.toDate().getTime();
+        const timeB = b.metadata!.timeRequested!.toDate().getTime();
+        return timeA - timeB;
+      });
+  }, [pass, files]);
+
+  const filteredPassFiles = useMemo(() => {
+    const searchTerm = (debouncedFileSearchInputs[passId] || '').toLowerCase();
+    if (!searchTerm) return passFiles;
+
+    return passFiles.filter(file => {
+      const fileName = file.metadata?.fileName?.split('/').pop()?.toLowerCase() || '';
+      const fullPath = file.metadata?.fileName?.toLowerCase() || '';
+      return fileName.includes(searchTerm) || fullPath.includes(searchTerm);
+    });
+  }, [passFiles, debouncedFileSearchInputs, passId]);
+
+  const filesCountDisplay = useMemo(() => {
+    const searchTerm = (debouncedFileSearchInputs[passId] || '').toLowerCase();
+    if (searchTerm) {
+      return `(showing ${filteredPassFiles.length} of ${passFiles.length})`;
+    }
+    return `(${passFiles.length})`;
+  }, [passFiles.length, filteredPassFiles.length, debouncedFileSearchInputs, passId]);
+
+  const isLoading = fetchTimestamp && fetchTimestamp > pass.start;
+
+  if (isLoading && passFiles.length === 0) {
+    return (
+      <div className="pass-files-section" style={{}}>
+        <span style={{
+          display: 'inline-block',
+          width: '28px',
+          height: '28px',
+          border: '3px solid rgba(59, 130, 246, 0.2)',
+          borderTopColor: '#3b82f6',
+          borderRadius: '50%',
+          animation: 'spin 1s linear infinite'
+        }}></span>
+        <p style={{ marginTop: '12px', color: '#6b7280', fontSize: '14px' }}>
+          Loading files...
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="pass-files-section">
+      <h4
+        onClick={() => toggleFilesExpansion(passId)}
+        style={{
+          cursor: 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '6px',
+          userSelect: 'none',
+          paddingLeft: '2px'
+        }}
+      >
+        <span style={{
+          display: 'inline-block',
+          transition: 'transform 0.2s',
+          transform: expandedFiles.has(passId) ? 'rotate(90deg)' : 'rotate(0deg)',
+          fontSize: '10px'
+        }}>
+          ▶
+        </span>
+        Files captured during this pass {filesCountDisplay}
+      </h4>
+
+      {expandedFiles.has(passId) && passFiles.length > 0 && (
+        <>
+          <div style={{ marginTop: '8px', marginLeft: '12px', marginBottom: '8px' }}>
+            <input
+              type="text"
+              placeholder="Search files by filename..."
+              value={fileSearchInputs[passId] || ''}
+              onChange={(e) => handleFileSearchChange(passId, e.target.value)}
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                width: 'fit-content',
+                minWidth: '250px',
+                maxWidth: '400px',
+                padding: '6px 10px',
+                fontSize: '13px',
+                border: '1px solid #e5e7eb',
+                borderRadius: '4px',
+                boxSizing: 'border-box',
+                backgroundColor: '#ffffff'
+              }}
+            />
+          </div>
+          <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '0',
+            overflowY: 'auto',
+            maxHeight: '33dvh',
+            overflow: 'auto',
+            borderTop: '1px solid #e5e7eb',
+            margin: '0 0 0 0.5rem'
+          }}>
+            {filteredPassFiles
+              .map((file, fileIndex, filteredFiles) => {
+                const fileName = file.metadata?.fileName?.split('/').pop() || 'Unknown file';
+
+                return (
+                  <div
+                    key={fileIndex}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      padding: '4px 6px',
+                      backgroundColor: '#f9fafb',
+                      borderBottom: fileIndex < filteredFiles.length - 1 ? '1px solid #e5e7eb' : 'none',
+                      fontSize: '13px',
+                      minWidth: '280px',
+                      boxSizing: 'border-box',
+                      transition: 'background-color 0.2s'
+                    }}
+                    onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#f3f4f6'; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = '#f9fafb'; }}
+                  >
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      flex: 1,
+                      minWidth: 0,
+                      overflow: 'hidden'
+                    }}>
+                      <span style={{
+                        color: '#374151',
+                        textOverflow: 'ellipsis',
+                        overflow: 'hidden',
+                        whiteSpace: 'nowrap',
+                        flex: 1
+                      }} title={file.metadata?.fileName || fileName}>
+                        {fileName}
+                      </span>
+                      <span style={{
+                        color: '#9ca3af',
+                        fontSize: '12px',
+                        whiteSpace: 'nowrap',
+                        flexShrink: 0
+                      }}>
+                        {file.metadata?.timeRequested?.toDate().toLocaleTimeString() || ''}
+                      </span>
+                    </div>
+                    <a
+                      href={file.metadata?.uri}
+                      download={file.metadata?.fileName?.split('/').pop() || 'download'}
+                      style={{
+                        marginLeft: '12px',
+                        padding: '6px 8px',
+                        backgroundColor: '#3b82f6',
+                        color: 'white',
+                        borderRadius: '4px',
+                        textDecoration: 'none',
+                        fontSize: '12px',
+                        whiteSpace: 'nowrap',
+                        flexShrink: 0,
+                        cursor: 'pointer',
+                        display: 'inline-block',
+                        border: 'none'
+                      }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                      }}
+                    >
+                      Download
+                    </a>
+                  </div>
+                );
+              })}
+            {filteredPassFiles.length === 0 && fileSearchInputs[passId] && (
+              <div style={{
+                padding: '12px',
+                color: '#6b7280',
+                fontSize: '13px'
+              }}>
+                No files match "{fileSearchInputs[passId]}"
+              </div>
+            )}
+          </div>
+        </>
+      )}
+
+      {passFiles.length === 0 && !isLoading && (
+        <p style={{ fontSize: '13px', color: '#6b7280', marginTop: '8px', paddingLeft: '30px' }}>
+          No files found for this pass.
+        </p>
+      )}
+    </div>
+  );
+};
+
 interface AppViewProps {
   passSummaries?: any[];
   files: Map<string, VIAM.dataApi.BinaryData>;
@@ -89,6 +338,20 @@ const AppInterface: React.FC<AppViewProps> = ({
   const [noteInputs, setNoteInputs] = useState<Record<string, string>>({});
   const [savingNotes, setSavingNotes] = useState<Set<string>>(new Set());
   const [noteSuccess, setNoteSuccess] = useState<Set<string>>(new Set());
+  const [expandedFiles, setExpandedFiles] = useState<Set<string>>(new Set());
+  const [fileSearchInputs, setFileSearchInputs] = useState<Record<string, string>>({});
+  const [debouncedFileSearchInputs, setDebouncedFileSearchInputs] = useState<Record<string, string>>({});
+
+  // Debounce file search inputs
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedFileSearchInputs(fileSearchInputs);
+    }, 300); // 300ms delay
+
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [fileSearchInputs]);
 
   // Initialize note inputs from existing notes
   useEffect(() => {
@@ -278,6 +541,23 @@ const AppInterface: React.FC<AppViewProps> = ({
       newExpandedRows.delete(index);
     }
     setExpandedRows(newExpandedRows);
+  };
+
+  const toggleFilesExpansion = (passId: string) => {
+    const newExpandedFiles = new Set(expandedFiles);
+    if (newExpandedFiles.has(passId)) {
+      newExpandedFiles.delete(passId);
+    } else {
+      newExpandedFiles.add(passId);
+    }
+    setExpandedFiles(newExpandedFiles);
+  };
+
+  const handleFileSearchChange = (passId: string, value: string) => {
+    setFileSearchInputs(prev => ({
+      ...prev,
+      [passId]: value
+    }));
   };
 
   const getStatusBadge = (success: boolean) => {
@@ -657,7 +937,7 @@ const AppInterface: React.FC<AppViewProps> = ({
                                                       <span style={{ fontSize: '12px', color: '#6b7280', marginLeft: '8px' }}>
                                                         ({formatTimeDifference(
                                                           passEnd.getTime(),
-                                                          afterImage.metadata?.timeRequested?.toDate()?.getTime() || passEnd.getTime()
+                                                          afterImage.metadata?.toDate()?.getTime() || passEnd.getTime()
                                                         )} before end)
                                                       </span>
                                                     </div>
@@ -709,271 +989,103 @@ const AppInterface: React.FC<AppViewProps> = ({
                                           })}
                                         </div>
 
+                                        {/* Pass Notes Section - standalone above Files */}
+                                        <div style={{ margin: '0 12px', maxWidth: '50%' }}>
+                                          {fetchingNotes && passNotesData.length === 0 ? (
+                                            <div className="pass-notes-section">
+                                              <label className="flex pass-notes-label">
+                                                <h4>Pass notes</h4>
+                                              </label>
+                                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100px', backgroundColor: '#f9fafb', borderRadius: '6px' }}>
+                                                <span style={{
+                                                  display: 'inline-block',
+                                                  width: '24px',
+                                                  height: '24px',
+                                                  border: '3px solid rgba(59, 130, 246, 0.2)',
+                                                  borderTopColor: '#3b82f6',
+                                                  borderRadius: '50%',
+                                                  animation: 'spin 1s linear infinite'
+                                                }}></span>
+                                                <span style={{ marginLeft: '12px', color: '#6b7280' }}>Loading notes...</span>
+                                              </div>
+                                            </div>
+                                          ) : (
+                                            <div className="pass-notes-section">
+                                              <label htmlFor={`pass-notes-${passId}`} className="pass-notes-label">
+                                                <h4>Pass notes</h4>
+                                              </label>
+
+                                              <textarea
+                                                id={`pass-notes-${passId}`}
+                                                className="notes-textarea"
+                                                value={noteInputs[passId] || ''}
+                                                onChange={(e) => handleNoteChange(passId, e.target.value)}
+                                                placeholder="Add a note for this pass..."
+                                                style={{
+                                                  width: '100%',
+                                                  minHeight: '80px',
+                                                  maxHeight: '200px',
+                                                  padding: '12px',
+                                                  fontSize: '14px',
+                                                  border: '1px solid #e5e7eb',
+                                                  borderRadius: '3px',
+                                                  resize: 'vertical',
+                                                  fontFamily: 'inherit',
+                                                  backgroundColor: '#ffffff',
+                                                  boxSizing: 'border-box'
+                                                }}
+                                                aria-label={`Notes for pass ${passId}`}
+                                                aria-describedby={`pass-notes-help-${passId}`}
+                                              />
+                                              <div style={{
+                                                display: 'flex',
+                                                justifyContent: 'flex-end',
+                                                marginTop: '4px'
+                                              }}>
+                                                <button
+                                                  type="button"
+                                                  onClick={() => saveNote(passId)}
+                                                  disabled={
+                                                    savingNotes.has(passId) ||
+                                                    noteSuccess.has(passId) ||
+                                                    (passNotesData.length > 0
+                                                      ? passNotesData[0].note_text === (noteInputs[passId] || '').trim()
+                                                      : !(noteInputs[passId] || '').trim())
+                                                  }
+                                                  style={getSaveButtonStyles(passId)}
+                                                  onMouseEnter={(e) => {
+                                                    if (!savingNotes.has(passId) && !noteSuccess.has(passId)) {
+                                                      e.currentTarget.style.backgroundColor = '#2563eb';
+                                                    }
+                                                  }}
+                                                  onMouseLeave={(e) => {
+                                                    if (!savingNotes.has(passId) && !noteSuccess.has(passId)) {
+                                                      e.currentTarget.style.backgroundColor = getSaveButtonStyles(passId).backgroundColor;
+                                                    }
+                                                  }}
+                                                >
+                                                  {getSaveButtonText(passId)}
+                                                </button>
+                                              </div>
+                                            </div>
+                                          )}
+                                        </div>
+
                                         {/* Parent container for Files and Notes columns */}
-                                        <div style={{ display: 'flex', margin: '10px 3px 0 0' }}>
+                                        <div style={{ display: 'flex', margin: '0 12px' }}>
                                           {/* Column 1: Files captured during this pass */}
                                           <div style={{ flex: '2 1 0%', minWidth: 0 }}>
-                                            {(() => {
-                                              const passStart = new Date(pass.start);
-                                              const passEnd = new Date(pass.end);
-
-                                              // Always include files that fall within the pass time range (this includes .pcd files)
-                                              const passTimeRangeFileIDS: string[] = [];
-                                              files.forEach((file, binaryDataId) => {
-                                                if (file.metadata?.timeRequested) {
-                                                  const fileTime = file.metadata.timeRequested.toDate();
-                                                  if (fileTime >= passStart && fileTime <= passEnd) {
-                                                    passTimeRangeFileIDS.push(binaryDataId);
-                                                  }
-                                                }
-                                              });
-
-
-                                              // Additionally include pass-specific files if pass_id is not blank
-                                              const passFileIDs: string[] = [];
-                                              if (pass.pass_id && pass.pass_id.trim() !== '') {
-                                                files.forEach((file, binaryDataId) => {
-                                                  if (file.metadata?.fileName && file.metadata.fileName.split("/").filter((y) => y == pass.pass_id).length > 0) {
-                                                    passFileIDs.push(binaryDataId);
-                                                  }
-                                                });
-                                              }
-
-
-                                              const ids = new Set([...passFileIDs, ...passTimeRangeFileIDS]);
-                                              const passFiles = Array.from(files.values()).filter((x) => ids.has(x.metadata!.binaryDataId)).sort((a, b) => {
-                                                const timeA = a.metadata!.timeRequested!.toDate().getTime();
-                                                const timeB = b.metadata!.timeRequested!.toDate().getTime();
-                                                return timeA - timeB;
-                                              })
-
-                                              // Determine if we are in a loading state for this specific row.
-                                              const isLoading = fetchTimestamp && fetchTimestamp > pass.start;
-
-                                              // Show a loading indicator inside the expanded row while fetching files for this pass.
-                                              if (isLoading && passFiles.length === 0) {
-                                                return (
-                                                  <div className="pass-files-section" style={{
-                                                    display: 'flex',
-                                                    flexDirection: 'column',
-                                                    alignItems: 'center',
-                                                    justifyContent: 'center',
-                                                    padding: '20px',
-                                                    minHeight: '100px',
-                                                  }}>
-                                                    <span style={{
-                                                      display: 'inline-block',
-                                                      width: '28px',
-                                                      height: '28px',
-                                                      border: '3px solid rgba(59, 130, 246, 0.2)',
-                                                      borderTopColor: '#3b82f6',
-                                                      borderRadius: '50%',
-                                                      animation: 'spin 1s linear infinite'
-                                                    }}></span>
-                                                    <p style={{ marginTop: '12px', color: '#6b7280', fontSize: '14px' }}>
-                                                      Loading files...
-                                                    </p>
-                                                  </div>
-                                                );
-                                              }
-
-                                              return (
-                                                <div className="pass-files-section">
-                                                  <h4>
-                                                    Files captured during this pass
-                                                  </h4>
-
-                                                  {passFiles.length > 0 && (
-                                                    <div style={{
-                                                      display: 'flex',
-                                                      flexWrap: 'wrap',
-                                                      gap: '8px',
-                                                      overflowY: 'auto',
-                                                      padding: '4px',
-                                                    }}>
-                                                      {passFiles.map((file, fileIndex) => {
-                                                        const fileName = file.metadata?.fileName?.split('/').pop() || 'Unknown file';
-
-                                                        return (
-                                                          <div
-                                                            key={fileIndex}
-                                                            style={{
-                                                              display: 'flex',
-                                                              alignItems: 'center',
-                                                              justifyContent: 'space-between',
-                                                              padding: '8px 12px',
-                                                              backgroundColor: '#f9fafb',
-                                                              border: '1px solid #e5e7eb',
-                                                              borderRadius: '6px',
-                                                              fontSize: '13px',
-                                                              cursor: 'pointer',
-                                                              transition: 'all 0.2s ease',
-                                                              flex: '1 0 calc(50% - 8px)',
-                                                              minWidth: '280px',
-                                                              maxWidth: 'calc(50% - 8px)',
-                                                              boxSizing: 'border-box'
-                                                            }}
-                                                            onMouseEnter={(e) => {
-                                                              e.currentTarget.style.backgroundColor = '#e5e7eb';
-                                                              e.currentTarget.style.transform = 'translateY(-1px)';
-                                                            }}
-                                                            onMouseLeave={(e) => {
-                                                              e.currentTarget.style.backgroundColor = '#f9fafb';
-                                                              e.currentTarget.style.transform = 'translateY(0)';
-                                                            }}
-                                                          >
-                                                            <div style={{
-                                                              display: 'flex',
-                                                              alignItems: 'center',
-                                                              gap: '8px',
-                                                              flex: 1,
-                                                              minWidth: 0,
-                                                              overflow: 'hidden'
-                                                            }}>
-                                                              <span style={{
-                                                                color: '#374151',
-                                                                textOverflow: 'ellipsis',
-                                                                overflow: 'hidden',
-                                                                whiteSpace: 'nowrap',
-                                                                flex: 1
-                                                              }} title={fileName}>
-                                                                {fileName}
-                                                              </span>
-                                                              <span style={{
-                                                                color: '#9ca3af',
-                                                                fontSize: '12px',
-                                                                whiteSpace: 'nowrap',
-                                                                flexShrink: 0
-                                                              }}>
-                                                                {file.metadata?.timeRequested?.toDate().toLocaleTimeString() || ''}
-                                                              </span>
-                                                            </div>
-                                                            <a
-                                                              href={file.metadata?.uri}
-                                                              download={file.metadata?.fileName?.split('/').pop() || 'download'}
-                                                              style={{
-                                                                marginLeft: '12px',
-                                                                padding: '6px 8px',
-                                                                backgroundColor: '#3b82f6',
-                                                                color: 'white',
-                                                                borderRadius: '4px',
-                                                                textDecoration: 'none',
-                                                                fontSize: '12px',
-                                                                whiteSpace: 'nowrap',
-                                                                transition: 'background-color 0.2s',
-                                                                flexShrink: 0,
-                                                                cursor: 'pointer',
-                                                                display: 'inline-block',
-                                                                border: 'none'
-                                                              }}
-                                                              onClick={(e) => {
-                                                                e.stopPropagation();
-                                                              }}
-                                                              onMouseEnter={(e) => {
-                                                                e.currentTarget.style.backgroundColor = '#2563eb';
-                                                              }}
-                                                              onMouseLeave={(e) => {
-                                                                e.currentTarget.style.backgroundColor = '#3b82f6';
-                                                              }}
-                                                            >
-                                                              Download
-                                                            </a>
-                                                          </div>
-                                                        );
-                                                      })}
-                                                    </div>
-                                                  )}
-
-                                                  {/* Show message if no files are found in the current view */}
-                                                  {passFiles.length === 0 && !isLoading && (
-                                                    <p>
-                                                      No files found for this pass.
-                                                    </p>
-                                                  )}
-                                                </div>
-                                              );
-                                            })()}
-                                          </div>
-
-                                          {/* Column 2: Pass Notes */}
-                                          <div style={{ flex: '1 1 0%', minWidth: 0 }}>
-                                            {fetchingNotes && passNotesData.length === 0 ? (
-                                              <div className="pass-notes-section">
-                                                <label className="flex pass-notes-label">
-                                                  <h4>Pass notes</h4>
-                                                </label>
-                                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100px', backgroundColor: '#f9fafb', borderRadius: '6px' }}>
-                                                  <span style={{
-                                                    display: 'inline-block',
-                                                    width: '24px',
-                                                    height: '24px',
-                                                    border: '3px solid rgba(59, 130, 246, 0.2)',
-                                                    borderTopColor: '#3b82f6',
-                                                    borderRadius: '50%',
-                                                    animation: 'spin 1s linear infinite'
-                                                  }}></span>
-                                                  <span style={{ marginLeft: '12px', color: '#6b7280' }}>Loading notes...</span>
-                                                </div>
-                                              </div>
-                                            ) : (
-                                              <div className="pass-notes-section">
-                                                <label htmlFor={`pass-notes-${passId}`} className="pass-notes-label">
-                                                  <h4>Pass notes</h4>
-                                                </label>
-
-                                                <textarea
-                                                  id={`pass-notes-${passId}`}
-                                                  className="notes-textarea"
-                                                  value={noteInputs[passId] || ''}
-                                                  onChange={(e) => handleNoteChange(passId, e.target.value)}
-                                                  placeholder="Add a note for this pass..."
-                                                  style={{
-                                                    width: '100%',
-                                                    minHeight: '300px',
-                                                    padding: '12px',
-                                                    fontSize: '14px',
-                                                    border: '1px solid #e5e7eb',
-                                                    borderRadius: '3px',
-                                                    resize: 'vertical',
-                                                    fontFamily: 'inherit',
-                                                    backgroundColor: '#ffffff',
-                                                    boxSizing: 'border-box'
-                                                  }}
-                                                  aria-label={`Notes for pass ${passId}`}
-                                                  aria-describedby={`pass-notes-help-${passId}`}
-                                                />
-                                                <div style={{
-                                                  display: 'flex',
-                                                  justifyContent: 'flex-end',
-                                                  marginTop: '4px'
-                                                }}>
-                                                  <button
-                                                    type="button"
-                                                    onClick={() => saveNote(passId)}
-                                                    disabled={
-                                                      savingNotes.has(passId) ||
-                                                      noteSuccess.has(passId) ||
-                                                      (passNotesData.length > 0
-                                                        ? passNotesData[0].note_text === (noteInputs[passId] || '').trim()
-                                                        : !(noteInputs[passId] || '').trim())
-                                                    }
-                                                    style={getSaveButtonStyles(passId)}
-                                                    onMouseEnter={(e) => {
-                                                      if (!savingNotes.has(passId) && !noteSuccess.has(passId)) {
-                                                        e.currentTarget.style.backgroundColor = '#2563eb';
-                                                      }
-                                                    }}
-                                                    onMouseLeave={(e) => {
-                                                      if (!savingNotes.has(passId) && !noteSuccess.has(passId)) {
-                                                        e.currentTarget.style.backgroundColor = getSaveButtonStyles(passId).backgroundColor;
-                                                      }
-                                                    }}
-                                                  >
-                                                    {getSaveButtonText(passId)}
-                                                  </button>
-                                                </div>
-                                              </div>
-                                            )}
+                                            <PassFiles
+                                              pass={pass}
+                                              files={files}
+                                              viamClient={viamClient}
+                                              fetchTimestamp={fetchTimestamp}
+                                              expandedFiles={expandedFiles}
+                                              toggleFilesExpansion={toggleFilesExpansion}
+                                              fileSearchInputs={fileSearchInputs}
+                                              handleFileSearchChange={handleFileSearchChange}
+                                              debouncedFileSearchInputs={debouncedFileSearchInputs}
+                                            />
                                           </div>
                                         </div>
                                       </div>
