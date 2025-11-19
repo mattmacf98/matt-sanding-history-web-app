@@ -341,6 +341,7 @@ const AppInterface: React.FC<AppViewProps> = ({
   const [expandedFiles, setExpandedFiles] = useState<Set<string>>(new Set());
   const [fileSearchInputs, setFileSearchInputs] = useState<Record<string, string>>({});
   const [debouncedFileSearchInputs, setDebouncedFileSearchInputs] = useState<Record<string, string>>({});
+  const [expandedErrors, setExpandedErrors] = useState<Set<string>>(new Set());
 
   // Debounce file search inputs
   useEffect(() => {
@@ -824,9 +825,56 @@ const AppInterface: React.FC<AppViewProps> = ({
                                 </td>
                                 <td className="text-zinc-700">
                                   {pass.err_string ? (
-                                    <span className="text-red-600 text-xxs font-mono error-text" title={pass.err_string}>
-                                      {pass.err_string}
-                                    </span>
+                                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '4px' }}>
+                                      <span 
+                                        className="text-red-600 text-xxs font-mono error-text" 
+                                        title={pass.err_string}
+                                        style={{
+                                          display: 'block',
+                                          maxWidth: '100%',
+                                          wordBreak: 'break-word',
+                                          whiteSpace: 'pre-wrap'
+                                        }}
+                                      >
+                                        {expandedErrors.has(pass.pass_id) 
+                                          ? pass.err_string 
+                                          : pass.err_string.length > 150 
+                                            ? `${pass.err_string.substring(0, 150)}...` 
+                                            : pass.err_string
+                                        }
+                                      </span>
+                                      {pass.err_string.length > 150 && (
+                                        <button
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            setExpandedErrors(prev => {
+                                              const newSet = new Set(prev);
+                                              if (newSet.has(pass.pass_id)) {
+                                                newSet.delete(pass.pass_id);
+                                              } else {
+                                                newSet.add(pass.pass_id);
+                                              }
+                                              return newSet;
+                                            });
+                                          }}
+                                          style={{
+                                            padding: '2px 8px',
+                                            fontSize: '11px',
+                                            backgroundColor: '#eee',
+                                            color: '#db5353ff',
+                                            border: 'none',
+                                            borderRadius: '3px',
+                                            cursor: 'pointer',
+                                            transition: 'background-color 0.2s',
+                                            fontWeight: 'bold'
+                                          }}
+                                          onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#db5353ff'; e.currentTarget.style.color = '#fff'; }}
+                                          onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = '#eee'; e.currentTarget.style.color = '#db5353ff'; }}
+                                        >
+                                          {expandedErrors.has(pass.pass_id) ? 'Show less' : 'Show more'}
+                                        </button>
+                                      )}
+                                    </div>
                                   ) : (
                                     <span className="text-gray-600">—</span>
                                   )}
