@@ -65,7 +65,7 @@ function App() {
     while (true) {
       let binaryData = await viamClient.dataClient.binaryDataByFilter(
         filter,
-        100,
+        1000,
         VIAM.dataApi.Order.DESCENDING,
         paginationToken,
         false,
