@@ -30,7 +30,6 @@ export interface RobotConfigMetadata {
   partId: string;
   robotId: string;
   configTimestamp: Date;
-  editedBy?: { email: string };
   hasOldConfig: boolean;
 }
 

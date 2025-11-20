@@ -11,7 +11,6 @@ export const extractConfigMetadata = (entry: any): RobotConfigMetadata => {
     partId: entry.part || '',
     robotId: entry.robot || '',
     configTimestamp,
-    editedBy: entry.editedBy,
     hasOldConfig: !!entry.old
   };
 };
