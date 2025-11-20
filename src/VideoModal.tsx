@@ -139,7 +139,30 @@ const VideoModal: React.FC<VideoModalProps> = ({
             )}
           </div>
           <div className="video-modal-info">
-            <p><strong>File:</strong> {selectedVideo.metadata?.fileName || 'Unknown'}</p>
+            <p>
+              <strong>File:</strong>{' '}
+              {selectedVideo.metadata?.uri ? (
+                <a
+                  href={selectedVideo.metadata.uri}
+                  download={selectedVideo.metadata?.fileName?.split('/').pop() || 'video.mp4'}
+                  style={{
+                    color: '#3b82f6',
+                    textDecoration: 'underline',
+                    cursor: 'pointer'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.color = '#2563eb';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.color = '#3b82f6';
+                  }}
+                >
+                  {selectedVideo.metadata?.fileName || 'Unknown'}
+                </a>
+              ) : (
+                selectedVideo.metadata?.fileName || 'Unknown'
+              )}
+            </p>
           </div>
         </div>
       </div>
