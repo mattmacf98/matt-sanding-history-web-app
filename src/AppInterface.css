@@ -839,9 +839,9 @@ button:focus {
 
 /* Step videos grid styles */
 .step-videos-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 8px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
   margin-top: 12px;
 }
 

@@ -139,36 +139,30 @@ const VideoModal: React.FC<VideoModalProps> = ({
             )}
           </div>
           <div className="video-modal-info">
-            <p><strong>File:</strong> {selectedVideo.metadata?.fileName || 'Unknown'}</p>
-          </div>
-          <div className="video-modal-actions">
-            <button 
-              onClick={handleDownload}
-              disabled={!modalVideoUrl}
-              className="video-modal-button secondary"
-              style={{
-                padding: '8px 16px',
-                backgroundColor: modalVideoUrl ? '#3b82f6' : '#9ca3af',
-                color: 'white',
-                border: 'none',
-                borderRadius: '4px',
-                cursor: modalVideoUrl ? 'pointer' : 'not-allowed',
-                fontSize: '14px',
-                transition: 'background-color 0.2s'
-              }}
-              onMouseEnter={(e) => {
-                if (modalVideoUrl) {
-                  e.currentTarget.style.backgroundColor = '#2563eb';
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (modalVideoUrl) {
-                  e.currentTarget.style.backgroundColor = '#3b82f6';
-                }
-              }}
-            >
-              Download
-            </button>
+            <p>
+              <strong>File:</strong>{' '}
+              {selectedVideo.metadata?.uri ? (
+                <a
+                  href={selectedVideo.metadata.uri}
+                  download={selectedVideo.metadata?.fileName?.split('/').pop() || 'video.mp4'}
+                  style={{
+                    color: '#3b82f6',
+                    textDecoration: 'underline',
+                    cursor: 'pointer'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.color = '#2563eb';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.color = '#3b82f6';
+                  }}
+                >
+                  {selectedVideo.metadata?.fileName || 'Unknown'}
+                </a>
+              ) : (
+                selectedVideo.metadata?.fileName || 'Unknown'
+              )}
+            </p>
           </div>
         </div>
       </div>
