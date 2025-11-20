@@ -59,7 +59,7 @@ export const getRobotConfigAtTime = async (
         return null;
       }
       // The config is nested under robotConfig
-      baseConfig = robotPart.robotConfig.fields || robotPart.robotConfig;
+      baseConfig = robotPart.robotConfig.toJson();
     } else {
       // If the last change is the most recent one in history (index 0),
       // the active config is the absolute latest. Fetch the part directly.
@@ -70,7 +70,7 @@ export const getRobotConfigAtTime = async (
         return null;
       }
       // The config is on the .part property of the response
-      baseConfig = robotPartResponse.part.robotConfig;
+      baseConfig = robotPartResponse.part.robotConfig ? robotPartResponse.part.robotConfig.toJson() : null;
     }
 
     if (!baseConfig) {
