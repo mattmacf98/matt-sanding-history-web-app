@@ -207,16 +207,44 @@ const StepVideosGrid: React.FC<StepVideosGridProps> = ({
     <>
       <div className="step-videos-grid">
         {stepVideos.map((video, videoIndex) => (
-          <div
-            key={videoIndex}
-            className="step-video-item"
-            onClick={() => handleVideoClick(video)}
-          >
-            <div className="video-thumbnail-container">
-              <div className="video-thumbnail">
-                <span className="video-icon">🎬</span>
+          <div key={videoIndex} style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+            <div
+              className="step-video-item"
+              onClick={() => handleVideoClick(video)}
+            >
+              <div className="video-thumbnail-container">
+                <div className="video-thumbnail">
+                  <span className="video-icon">🎬</span>
+                </div>
               </div>
             </div>
+            {video.metadata?.uri && (
+              <a
+                href={video.metadata.uri}
+                download={video.metadata?.fileName?.split('/').pop() || 'video.mp4'}
+                onClick={(e) => e.stopPropagation()}
+                style={{
+                  padding: '4px 8px',
+                  backgroundColor: '#3b82f6',
+                  color: 'white',
+                  borderRadius: '4px',
+                  textDecoration: 'none',
+                  fontSize: '11px',
+                  textAlign: 'center',
+                  cursor: 'pointer',
+                  transition: 'background-color 0.2s',
+                  border: 'none'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = '#2563eb';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = '#3b82f6';
+                }}
+              >
+                Download
+              </a>
+            )}
           </div>
         ))}
       </div>

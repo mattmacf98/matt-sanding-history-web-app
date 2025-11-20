@@ -141,35 +141,6 @@ const VideoModal: React.FC<VideoModalProps> = ({
           <div className="video-modal-info">
             <p><strong>File:</strong> {selectedVideo.metadata?.fileName || 'Unknown'}</p>
           </div>
-          <div className="video-modal-actions">
-            <button 
-              onClick={handleDownload}
-              disabled={!modalVideoUrl}
-              className="video-modal-button secondary"
-              style={{
-                padding: '8px 16px',
-                backgroundColor: modalVideoUrl ? '#3b82f6' : '#9ca3af',
-                color: 'white',
-                border: 'none',
-                borderRadius: '4px',
-                cursor: modalVideoUrl ? 'pointer' : 'not-allowed',
-                fontSize: '14px',
-                transition: 'background-color 0.2s'
-              }}
-              onMouseEnter={(e) => {
-                if (modalVideoUrl) {
-                  e.currentTarget.style.backgroundColor = '#2563eb';
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (modalVideoUrl) {
-                  e.currentTarget.style.backgroundColor = '#3b82f6';
-                }
-              }}
-            >
-              Download
-            </button>
-          </div>
         </div>
       </div>
     </div>
