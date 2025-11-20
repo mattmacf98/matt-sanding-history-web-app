@@ -1,6 +1,6 @@
 .PHONY: create update upload build
 
-VERSION := 1.0.25
+VERSION := 1.0.26
 MODULE_NAME := sanding-monitoring-web-app
 ORG_PUBLIC_NAMESPACE := ncs
 
