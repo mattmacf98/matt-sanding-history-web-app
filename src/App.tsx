@@ -3,9 +3,9 @@ import * as VIAM from "@viamrobotics/sdk";
 import AppInterface from './AppInterface';
 import Cookies from "js-cookie";
 import { JsonValue } from '@viamrobotics/sdk';
-import { Pass } from './AppInterface';
+import { Pass, PassNote } from './types';
 import { Timestamp } from '@bufbuild/protobuf';
-import { PassNote, createNotesManager } from './lib/notesManager';
+import { createNotesManager } from './lib/notesManager';
 
 const sandingSummaryName = "sanding-summary";
 const sandingSummaryComponentType = "rdk:component:sensor";

@@ -11,7 +11,13 @@ import {
 } from './lib/videoUtils';
 import { getBeforeAfterImages, getStepVideos } from './lib/passUtils';
 import { formatDurationMs } from './lib/uiUtils';
-import { PassNote, createNotesManager } from './lib/notesManager';
+import { createNotesManager } from './lib/notesManager';
+import {
+  getRobotConfigAtTime,
+  downloadRobotConfig,
+  getPassConfigComparison,
+} from './lib/configUtils';
+import { Pass, PassNote, Step, RobotConfigMetadata } from './types';
 
 interface PassFilesProps {
   pass: Pass;
@@ -289,27 +295,6 @@ interface AppViewProps {
   };
 }
 
-export interface Step {
-  name: string;
-  start: Date;
-  end: Date;
-  pass_id: string;
-}
-
-export interface Pass {
-  start: Date;
-  end: Date;
-  steps: Step[];
-  success: boolean;
-  pass_id: string;
-  err_string?: string | null;
-  build_info?: {
-    version?: string;
-    git_revision?: string;
-    date_compiled?: string;
-  };
-}
-
 const AppInterface: React.FC<AppViewProps> = ({
   machineName,
   viamClient,
@@ -338,6 +323,9 @@ const AppInterface: React.FC<AppViewProps> = ({
   const [noteInputs, setNoteInputs] = useState<Record<string, string>>({});
   const [savingNotes, setSavingNotes] = useState<Set<string>>(new Set());
   const [noteSuccess, setNoteSuccess] = useState<Set<string>>(new Set());
+  const [downloadingConfigs, setDownloadingConfigs] = useState<Set<string>>(new Set());
+  const [configMetadata, setConfigMetadata] = useState<Map<string, RobotConfigMetadata>>(new Map());
+  const [loadingConfigMetadata, setLoadingConfigMetadata] = useState<Set<string>>(new Set());
   const [expandedFiles, setExpandedFiles] = useState<Set<string>>(new Set());
   const [fileSearchInputs, setFileSearchInputs] = useState<Record<string, string>>({});
   const [debouncedFileSearchInputs, setDebouncedFileSearchInputs] = useState<Record<string, string>>({});
@@ -538,10 +526,66 @@ const AppInterface: React.FC<AppViewProps> = ({
 
     if (isExpanding) {
       newExpandedRows.add(index);
+      
+      // Fetch config metadata when expanding a row
+      const [dayIndexStr, passIndexStr] = index.split('-');
+      const dayIndex = parseInt(dayIndexStr);
+      const passIndex = parseInt(passIndexStr);
+      const dateKey = Object.keys(groupedPasses)[dayIndex];
+      const pass = groupedPasses[dateKey]?.[passIndex];
+      
+      if (pass && !configMetadata.has(pass.pass_id) && !loadingConfigMetadata.has(pass.pass_id)) {
+        const flatPasses = Object.values(groupedPasses).flat();
+        const { prevPass } = getPassConfigComparison(pass, flatPasses, configMetadata);
+        fetchConfigMetadata(pass, prevPass);
+      }
     } else {
       newExpandedRows.delete(index);
     }
     setExpandedRows(newExpandedRows);
+  };
+
+  const fetchConfigMetadata = async (pass: Pass, prevPass: Pass | null) => {
+    if (!viamClient || !partId) return;
+
+    const passId = pass.pass_id;
+    const prevPassId = prevPass?.pass_id;
+
+    const idsToLoad = [passId];
+    if (prevPassId && !configMetadata.has(prevPassId)) {
+      idsToLoad.push(prevPassId);
+    }
+
+    setLoadingConfigMetadata(prev => new Set([...prev, ...idsToLoad]));
+
+    try {
+      const promises = [getRobotConfigAtTime(viamClient, partId, pass.start)];
+      if (prevPass) {
+        promises.push(getRobotConfigAtTime(viamClient, partId, prevPass.start));
+      }
+
+      const results = await Promise.all(promises);
+      
+      const newMetadatas = new Map<string, RobotConfigMetadata>();
+      if (results[0]) {
+        newMetadatas.set(passId, results[0].metadata);
+      }
+      if (prevPassId && results[1]) {
+        newMetadatas.set(prevPassId, results[1].metadata);
+      }
+
+      if (newMetadatas.size > 0) {
+        setConfigMetadata(prev => new Map([...prev, ...newMetadatas]));
+      }
+    } catch (error) {
+      console.error('Error fetching config metadata:', error);
+    } finally {
+      setLoadingConfigMetadata(prev => {
+        const newSet = new Set(prev);
+        idsToLoad.forEach(id => newSet.delete(id));
+        return newSet;
+      });
+    }
   };
 
   const toggleFilesExpansion = (passId: string) => {
@@ -630,6 +674,46 @@ const AppInterface: React.FC<AppViewProps> = ({
       );
     }
     return 'Save note';
+  };
+
+  const handleDownloadConfig = async (pass: Pass) => {
+    if (!viamClient || !partId) {
+      alert('Unable to download config: missing required information');
+      return;
+    }
+
+    const passId = pass.pass_id;
+    
+    // Add to downloading state
+    setDownloadingConfigs(prev => new Set(prev).add(passId));
+
+    try {
+      // Fetch the config that was active at the pass start time
+      const result = await getRobotConfigAtTime(viamClient, partId, pass.start);
+      
+      if (!result) {
+        alert('No configuration found for this time period');
+        return;
+      }
+
+      // Store metadata for display (if not already stored)
+      if (!configMetadata.has(passId)) {
+        setConfigMetadata(prev => new Map(prev).set(passId, result.metadata));
+      }
+
+      // Download the config
+      downloadRobotConfig(result.config, passId, result.metadata.configTimestamp, machineId);
+    } catch (error) {
+      console.error('Error downloading config:', error);
+      alert('Failed to download configuration. Please try again.');
+    } finally {
+      // Remove from downloading state
+      setDownloadingConfigs(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(passId);
+        return newSet;
+      });
+    }
   };
 
   return (
@@ -885,39 +969,172 @@ const AppInterface: React.FC<AppViewProps> = ({
                                     <div className="pass-details">
                                       {/* Build information section moved inside expanded row */}
                                       {pass.build_info && (
-                                        <div className="build-info-section">
-                                          <h4>Build information</h4>
-                                          {(pass.build_info.version || pass.build_info.git_revision || pass.build_info.date_compiled) ? (
-                                            <div className="build-info-grid">
-                                              {/* Version */}
-                                              {pass.build_info.version && (
-                                                <div className="build-info-item">
-                                                  <span className="build-info-label">Version</span>
-                                                  <span className="build-info-value">{pass.build_info.version}</span>
-                                                </div>
-                                              )}
-
-                                              {/* Git Revision */}
-                                              {pass.build_info.git_revision && (
-                                                <div className="build-info-item">
-                                                  <span className="build-info-label">Git revision</span>
-                                                  <span className="build-info-value">{pass.build_info.git_revision}</span>
-                                                </div>
-                                              )}
-
-                                              {/* Date Compiled */}
-                                              {pass.build_info.date_compiled && (
-                                                <div className="build-info-item">
-                                                  <span className="build-info-label">Date compiled</span>
-                                                  <span className="build-info-value">{pass.build_info.date_compiled}</span>
-                                                </div>
-                                              )}
+                                        <div className="flex gap-8">
+                                          <div className="info-section">
+                                            <div style={{ 
+                                              display: 'flex', 
+                                              alignItems: 'center',
+                                              marginBottom: '12px'
+                                            }}>
+                                              <h4 style={{ margin: 0 }}>Build information</h4>
                                             </div>
-                                          ) : (
-                                            <div className="build-info-notice">
-                                              Build information not available for this run.
+
+                                            {(pass.build_info.version || pass.build_info.git_revision || pass.build_info.date_compiled) ? (
+                                              <div className="info-grid">
+                                                {/* Version */}
+                                                {pass.build_info.version && (
+                                                  <div className="info-item">
+                                                    <span className="info-label">Version</span>
+                                                    <span className="info-value">{pass.build_info.version}</span>
+                                                  </div>
+                                                )}
+
+                                                {/* Git Revision */}
+                                                {pass.build_info.git_revision && (
+                                                  <div className="info-item">
+                                                    <span className="info-label">Git revision</span>
+                                                    <span className="info-value">{pass.build_info.git_revision}</span>
+                                                  </div>
+                                                )}
+
+                                                {/* Date Compiled */}
+                                                {pass.build_info.date_compiled && (
+                                                  <div className="info-item">
+                                                    <span className="info-label">Date compiled</span>
+                                                    <span className="info-value">{pass.build_info.date_compiled}</span>
+                                                  </div>
+                                                )}
+                                              </div>
+                                            ) : (
+                                              <div className="info-notice">
+                                                Build information not available for this run.
+                                              </div>
+                                            )}
+                                          </div>
+                                          <div className="info-section">
+                                            <div style={{ 
+                                              display: 'flex', 
+                                              alignItems: 'center',
+                                              marginBottom: '12px'
+                                            }}>
+                                              <h4 style={{ margin: 0 }}>Config information</h4>
+                                              {(() => {
+                                                const flatPasses = Object.values(groupedPasses).flat();
+                                                const { prevPass, configChanged } = getPassConfigComparison(pass, flatPasses, configMetadata);
+
+                                                // If the previous pass exists but we don't have its metadata yet,
+                                                // trigger a fetch. The UI will update on the next render cycle.
+                                                if (prevPass && !configMetadata.has(prevPass.pass_id) && !loadingConfigMetadata.has(prevPass.pass_id)) {
+                                                  fetchConfigMetadata(pass, prevPass);
+                                                }
+
+                                                // Only show the badge if the metadata for both passes has been loaded and they are different.
+                                                if (configChanged) {
+                                                  return (
+                                                    <div style={{
+                                                      marginLeft: '12px',
+                                                      fontSize: '12px',
+                                                      color: '#4f46e5',
+                                                      backgroundColor: '#eef2ff',
+                                                      padding: '2px 8px',
+                                                      borderRadius: '9999px',
+                                                      fontWeight: 500,
+                                                    }}>
+                                                      Config changed since last run
+                                                    </div>
+                                                  );
+                                                }
+                                                return null;
+                                              })()}
                                             </div>
-                                          )}
+                                            
+                                            {loadingConfigMetadata.has(pass.pass_id) ? (
+                                              <div style={{ 
+                                                display: 'flex', 
+                                                alignItems: 'center', 
+                                                gap: '8px',
+                                                marginBottom: '12px',
+                                                color: '#6b7280',
+                                                fontSize: '14px'
+                                              }}>
+                                                <div style={{
+                                                  width: '16px',
+                                                  height: '16px',
+                                                  border: '2px solid rgba(59, 130, 246, 0.2)',
+                                                  borderTop: '2px solid #3b82f6',
+                                                  borderRadius: '50%',
+                                                  animation: 'spin 1s linear infinite'
+                                                }} />
+                                                Loading config info...
+                                              </div>
+                                            ) : configMetadata.has(pass.pass_id) ? (
+                                              <div className="info-grid" style={{ marginBottom: '12px' }}>
+                                                {(() => {
+                                                  const metadata = configMetadata.get(pass.pass_id)!;
+                                                  return (
+                                                    <>
+                                                      <div className="info-item">
+                                                        <span className="info-label">Timestamp</span>
+                                                        <span className="info-value">
+                                                          {metadata.configTimestamp.toLocaleString()}
+                                                        </span>
+                                                      </div>
+                                                      <div className="info-item">
+                                                        <button
+                                                          onClick={() => handleDownloadConfig(pass)}
+                                                          disabled={downloadingConfigs.has(pass.pass_id)}
+                                                          style={{
+                                                            padding: '6px 12px',
+                                                            fontSize: '12px',
+                                                            backgroundColor: downloadingConfigs.has(pass.pass_id) ? '#9ca3af' : '#3b82f6',
+                                                            color: 'white',
+                                                            border: 'none',
+                                                            borderRadius: '4px',
+                                                            cursor: downloadingConfigs.has(pass.pass_id) ? 'not-allowed' : 'pointer',
+                                                            transition: 'background-color 0.2s',
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            gap: '6px'
+                                                          }}
+                                                          onMouseEnter={(e) => {
+                                                            if (!downloadingConfigs.has(pass.pass_id)) {
+                                                              e.currentTarget.style.backgroundColor = '#2563eb';
+                                                            }
+                                                          }}
+                                                          onMouseLeave={(e) => {
+                                                            if (!downloadingConfigs.has(pass.pass_id)) {
+                                                              e.currentTarget.style.backgroundColor = '#3b82f6';
+                                                            }
+                                                          }}
+                                                        >
+                                                          {downloadingConfigs.has(pass.pass_id) ? (
+                                                            <>
+                                                              <div
+                                                                style={{
+                                                                  width: '12px',
+                                                                  height: '12px',
+                                                                  border: '2px solid #ffffff',
+                                                                  borderTop: '2px solid transparent',
+                                                                  borderRadius: '50%',
+                                                                  animation: 'spin 1s linear infinite'
+                                                                }}
+                                                              />
+                                                              Downloading...
+                                                            </>
+                                                          ) : (
+                                                            <>
+                                                              Download config
+                                                            </>
+                                                          )}
+                                                        </button>
+                                                      </div>
+                                                      
+                                                    </>
+                                                  );
+                                                })()}
+                                              </div>
+                                            ) : null}
+                                          </div>
                                         </div>
                                       )}
 
@@ -985,7 +1202,7 @@ const AppInterface: React.FC<AppViewProps> = ({
                                                       <span style={{ fontSize: '12px', color: '#6b7280', marginLeft: '8px' }}>
                                                         ({formatTimeDifference(
                                                           passEnd.getTime(),
-                                                          afterImage.metadata?.toDate()?.getTime() || passEnd.getTime()
+                                                          afterImage.metadata?.timeRequested?.toDate()?.getTime() || passEnd.getTime()
                                                         )} before end)
                                                       </span>
                                                     </div>

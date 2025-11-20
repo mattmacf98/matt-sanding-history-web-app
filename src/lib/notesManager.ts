@@ -1,11 +1,5 @@
 import * as VIAM from "@viamrobotics/sdk";
-
-export interface PassNote {
-  pass_id: string;
-  note_text: string;
-  created_at: string;
-  created_by: string;
-}
+import { PassNote } from '../types';
 
 export class NotesManager {
   private viamClient: VIAM.ViamClient;
