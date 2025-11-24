@@ -17,6 +17,9 @@ export interface Pass {
     git_revision?: string;
     date_compiled?: string;
   };
+  blue_point_count?: number;
+  blue_point_diff_percent?: number;
+  sanding_distance_mm?: number;
 }
 
 export interface PassNote {

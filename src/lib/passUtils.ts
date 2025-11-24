@@ -1,5 +1,5 @@
 import * as VIAM from "@viamrobotics/sdk";
-import { Pass, Step } from "../AppInterface";
+import { Pass, Step } from "../types";
 
 /**
  * Get before and after images for a given pass from a list of image files.

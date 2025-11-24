@@ -255,9 +255,24 @@ function App() {
           success: pass.success ?? true,
           pass_id: pass.pass_id,
           err_string: pass.err_string || null,
-          build_info: buildInfo
+          build_info: buildInfo,
+          blue_point_count: (pass.target_points_count !== undefined && pass.target_points_count !== null) ? Number(pass.target_points_count) : undefined,
+          sanding_distance_mm: (pass.sanding_distance_mm !== undefined && pass.sanding_distance_mm !== null) ? Number(pass.sanding_distance_mm) : undefined
         };
       });
+
+      // Calculate percentage difference in blue points
+      for (let i = 0; i < processedPasses.length - 1; i++) {
+        const current = processedPasses[i];
+        const previous = processedPasses[i + 1];
+        
+        if (current.blue_point_count !== undefined && 
+            previous.blue_point_count !== undefined && 
+            previous.blue_point_count !== 0) {
+          const diff = current.blue_point_count - previous.blue_point_count;
+          current.blue_point_diff_percent = (diff / previous.blue_point_count) * 100;
+        }
+      }
 
       setPassSummaries(processedPasses);
 

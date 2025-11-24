@@ -473,10 +473,12 @@ const AppInterface: React.FC<AppViewProps> = ({
       totalPassCount: number;
       executionPercentage: number;
       formattedDate: string;
+      totalBluePoints: number;
     }>, [dateKey, passes]) => {
       let totalFactoryTime = 0;
       let totalExecutionTime = 0;
       let totalOtherStepsTime = 0;
+      let totalBluePoints = 0;
 
       // Calculate both time and execution metrics
       passes.forEach(pass => {
@@ -497,6 +499,11 @@ const AppInterface: React.FC<AppViewProps> = ({
             }
           });
         }
+
+        // Sum up blue points
+        if (pass.blue_point_count !== undefined) {
+          totalBluePoints += pass.blue_point_count;
+        }
       });
 
       const totalStepsTime = totalExecutionTime + totalOtherStepsTime;
@@ -513,7 +520,8 @@ const AppInterface: React.FC<AppViewProps> = ({
         totalOtherStepsTime,
         totalPassCount: passes.length,
         executionPercentage,
-        formattedDate
+        formattedDate,
+        totalBluePoints
       };
 
       return acc;
@@ -798,6 +806,7 @@ const AppInterface: React.FC<AppViewProps> = ({
                     <th>End time</th>
                     <th>Total duration</th>
                     <th>Execution time</th>
+                    <th>Blue points</th>
                     <th>Steps</th>
                     <th>Error</th>
                   </tr>
@@ -816,7 +825,7 @@ const AppInterface: React.FC<AppViewProps> = ({
                     return (
                       <React.Fragment key={dateKey}>
                         <tr className="day-summary-header">
-                          <td colSpan={10}>
+                          <td colSpan={11}>
                             <div className="day-summary-content">
                               <div className="day-summary-date">{formattedDate}</div>
                               <div className="day-summary-stats">
@@ -905,6 +914,9 @@ const AppInterface: React.FC<AppViewProps> = ({
                                   {formatDurationToMinutesSeconds(new Date(0), new Date(execMs))}
                                 </td>
                                 <td className="text-zinc-700">
+                                  {pass.blue_point_count !== undefined ? pass.blue_point_count.toLocaleString() : '—'}
+                                </td>
+                                <td className="text-zinc-700">
                                   {pass.steps ? `${pass.steps.length} steps` : '—'}
                                 </td>
                                 <td className="text-zinc-700">
@@ -965,8 +977,47 @@ const AppInterface: React.FC<AppViewProps> = ({
                                 </td>
                               </tr>{expandedRows.has(globalIndex) && (
                                 <tr className="expanded-content">
-                                  <td colSpan={10}>
+                                  <td colSpan={11}>
                                     <div className="pass-details">
+                                      {(pass.blue_point_count !== undefined || pass.sanding_distance_mm !== undefined) && (
+                                        <div className="info-section">
+                                          <div className="info-grid">
+                                            {pass.blue_point_count !== undefined && (
+                                              <div className="info-item">
+                                                <span className="info-label" style={{ color: '#374151' }}>
+                                                  Blue Points
+                                                  {pass.blue_point_diff_percent !== undefined && (
+                                                    <span style={{ 
+                                                      marginLeft: '8px', 
+                                                      fontSize: '12px',
+                                                      color: '#6b7280',
+                                                      fontWeight: '500'
+                                                    }}>
+                                                      ({pass.blue_point_diff_percent > 0 ? '+' : ''}{pass.blue_point_diff_percent.toFixed(1)}%)
+                                                    </span>
+                                                  )}
+                                                </span>
+                                                <span className="info-value">
+                                                  {pass.blue_point_count.toLocaleString()}
+                                                </span>
+                                              </div>
+                                            )}
+                                            
+                                            {pass.sanding_distance_mm !== undefined && (
+                                              <div className="info-item">
+                                                <span className="info-label" style={{ color: '#374151' }}>Sanding Distance</span>
+                                                <span className="info-value">
+                                                  {pass.sanding_distance_mm >= 1000 
+                                                    ? `${(pass.sanding_distance_mm / 1000).toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 2 })} m`
+                                                    : `${pass.sanding_distance_mm.toFixed(1)} mm`
+                                                  }
+                                                </span>
+                                              </div>
+                                            )}
+                                          </div>
+                                        </div>
+                                      )}
+
                                       {/* Build information section moved inside expanded row */}
                                       {pass.build_info && (
                                         <div className="flex gap-8">
