@@ -315,7 +315,10 @@ const AppInterface: React.FC<AppViewProps> = ({
   const [activeRoute, setActiveRoute] = useState('live');
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
   const [videoStoreClient, setVideoStoreClient] = useState<VIAM.GenericComponentClient | null>(null);
-  const [selectedCamera, setSelectedCamera] = useState<string>('');
+  const [selectedCamera, setSelectedCamera] = useState<string>(() => {
+    // Initialize from localStorage if available
+    return localStorage.getItem('selectedCamera') || '';
+  });
   const [beforeAfterModal, setBeforeAfterModal] = useState<{
     beforeImage: VIAM.dataApi.BinaryData | null;
     afterImage: VIAM.dataApi.BinaryData | null;
@@ -426,6 +429,29 @@ const AppInterface: React.FC<AppViewProps> = ({
         .filter((name): name is string => !!name)
     )
   );
+
+  // Auto-select camera: if only one available, select it; otherwise restore from localStorage
+  useEffect(() => {
+    if (cameraComponentNames.length === 0) return;
+    
+    // If only one camera, auto-select it
+    if (cameraComponentNames.length === 1) {
+      const onlyCamera = cameraComponentNames[0];
+      if (selectedCamera !== onlyCamera) {
+        setSelectedCamera(onlyCamera);
+        localStorage.setItem('selectedCamera', onlyCamera);
+      }
+      return;
+    }
+    
+    // If multiple cameras and current selection is invalid, try to restore from localStorage
+    if (!selectedCamera || !cameraComponentNames.includes(selectedCamera)) {
+      const savedCamera = localStorage.getItem('selectedCamera');
+      if (savedCamera && cameraComponentNames.includes(savedCamera)) {
+        setSelectedCamera(savedCamera);
+      }
+    }
+  }, [cameraComponentNames, selectedCamera]);
 
   const openBeforeAfterModal = (beforeImage: VIAM.dataApi.BinaryData | null, afterImage: VIAM.dataApi.BinaryData | null) => {
     setBeforeAfterModal({ beforeImage, afterImage });
@@ -778,7 +804,10 @@ const AppInterface: React.FC<AppViewProps> = ({
                   <select
                     id="camera-select"
                     value={selectedCamera}
-                    onChange={(e) => setSelectedCamera(e.target.value)}
+                    onChange={(e) => {
+                      setSelectedCamera(e.target.value);
+                      localStorage.setItem('selectedCamera', e.target.value);
+                    }}
                     className="video-store-selector-select"
                   >
                     <option value="">Select a camera resource</option>
