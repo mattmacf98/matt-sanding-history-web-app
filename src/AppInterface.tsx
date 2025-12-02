@@ -5,6 +5,7 @@ import StepVideosGrid from './StepVideosGrid';
 import VideoStoreSelector from './VideoStoreSelector';
 import ImageDisplay from './ImageDisplay';
 import BeforeAfterModal from './BeforeAfterModal';
+import GlobalLoadingIndicator from './components/GlobalLoadingIndicator';
 import {
   formatDurationToMinutesSeconds,
   formatTimeDifference,
@@ -1599,6 +1600,12 @@ const AppInterface: React.FC<AppViewProps> = ({
           viamClient={viamClient}
         />
       )}
+
+      <GlobalLoadingIndicator 
+        isLoading={!!fetchTimestamp} 
+        currentDate={fetchTimestamp}
+        fileCount={files.size + videoFiles.size + imageFiles.size}
+      />
     </div>
   );
 };
