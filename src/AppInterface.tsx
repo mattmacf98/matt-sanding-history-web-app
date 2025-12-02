@@ -957,7 +957,8 @@ const AppInterface: React.FC<AppViewProps> = ({
                                           gap: '6px',
                                           paddingLeft: '10px',
                                           paddingRight: '10px',
-                                          transition: 'background-color 0.15s ease'
+                                          transition: 'background-color 0.15s ease',
+                                          cursor: 'pointer'
                                         }}
                                         onMouseEnter={(e) => {
                                           const btn = e.currentTarget;
