@@ -920,11 +920,70 @@ const AppInterface: React.FC<AppViewProps> = ({
                                   {pass.pass_id ? (
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                                       <button
-                                        onClick={() => navigator.clipboard.writeText(pass.pass_id)}
-                                        className="hover:bg-blue-100 hover:text-blue-700 px-1 py-0.5 rounded cursor-pointer transition-colors"
-                                        title={`Click to copy full pass ID: ${pass.pass_id}`}
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          navigator.clipboard.writeText(pass.pass_id);
+                                          // Show copied feedback
+                                          const btn = e.currentTarget;
+                                          const svg = btn.querySelector('svg');
+                                          const textSpan = btn.querySelector('span');
+                                          // Change to green success state
+                                          btn.style.backgroundColor = '#dcfce7';
+                                          btn.style.color = '#166534';
+                                          if (svg) {
+                                            svg.innerHTML = '<path d="M21,7L9,19L3.5,13.5L4.91,12.09L9,16.17L19.59,5.59L21,7Z" />';
+                                            svg.style.fill = '#166534';
+                                          }
+                                          if (textSpan) {
+                                            textSpan.style.color = '#166534';
+                                          }
+                                          setTimeout(() => {
+                                            btn.style.backgroundColor = '#f3f4f6';
+                                            btn.style.color = '';
+                                            if (svg) {
+                                              svg.innerHTML = '<path d="M19,21H8V7H19M19,5H8A2,2 0 0,0 6,7V21A2,2 0 0,0 8,23H19A2,2 0 0,0 21,21V7A2,2 0 0,0 19,5M16,1H4A2,2 0 0,0 2,3V17H4V3H16V1Z" />';
+                                              svg.style.fill = '#9ca3af';
+                                            }
+                                            if (textSpan) {
+                                              textSpan.style.color = '#52525b';
+                                            }
+                                          }, 1500);
+                                        }}
+                                        className="inline-flex items-center justify-center py-1 rounded text-xs font-medium cursor-pointer"
+                                        title={`Copy pass ID: ${pass.pass_id}`}
+                                        style={{ 
+                                          backgroundColor: '#f3f4f6',
+                                          border: 'none',
+                                          gap: '6px',
+                                          paddingLeft: '10px',
+                                          paddingRight: '10px',
+                                          transition: 'background-color 0.15s ease'
+                                        }}
+                                        onMouseEnter={(e) => {
+                                          const btn = e.currentTarget;
+                                          const svg = btn.querySelector('svg');
+                                          const textSpan = btn.querySelector('span');
+                                          if (btn.style.backgroundColor !== 'rgb(220, 252, 231)') { // not in success state
+                                            btn.style.backgroundColor = '#dbeafe';
+                                            if (svg) svg.style.fill = '#2563eb';
+                                            if (textSpan) textSpan.style.color = '#2563eb';
+                                          }
+                                        }}
+                                        onMouseLeave={(e) => {
+                                          const btn = e.currentTarget;
+                                          const svg = btn.querySelector('svg');
+                                          const textSpan = btn.querySelector('span');
+                                          if (btn.style.backgroundColor !== 'rgb(220, 252, 231)') { // not in success state
+                                            btn.style.backgroundColor = '#f3f4f6';
+                                            if (svg) svg.style.fill = '#9ca3af';
+                                            if (textSpan) textSpan.style.color = '#52525b';
+                                          }
+                                        }}
                                       >
-                                        {pass.pass_id.substring(0, 8)}
+                                        <span style={{ fontFamily: 'ui-monospace, SFMono-Regular, SF Mono, Menlo, Consolas, Liberation Mono, monospace', color: '#52525b', fontSize: '11px' }}>{pass.pass_id.substring(0, 8)}</span>
+                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" style={{ width: '12px', height: '12px', fill: '#9ca3af', transition: 'fill 0.15s ease' }}>
+                                          <path d="M19,21H8V7H19M19,5H8A2,2 0 0,0 6,7V21A2,2 0 0,0 8,23H19A2,2 0 0,0 21,21V7A2,2 0 0,0 19,5M16,1H4A2,2 0 0,0 2,3V17H4V3H16V1Z" />
+                                        </svg>
                                       </button>
                                       {passNotesData.length > 0 && passNotesData[0].note_text.trim() && (
                                         <span
