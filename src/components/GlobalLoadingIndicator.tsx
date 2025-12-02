@@ -17,56 +17,56 @@ const GlobalLoadingIndicator: React.FC<GlobalLoadingIndicatorProps> = ({
   return (
     <div style={{
       position: 'fixed',
-      bottom: '20px',
-      right: '20px',
-      backgroundColor: 'white',
-      padding: '16px 20px',
+      bottom: '24px',
+      right: '24px',
+      backgroundColor: 'rgba(0, 0, 0, 0.88)',
+      padding: '12px 16px',
       borderRadius: '8px',
       boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
       display: 'flex',
       alignItems: 'center',
-      gap: '16px',
+      gap: '12px',
       zIndex: 9999,
-      border: '1px solid #e5e7eb',
-      animation: 'slideIn 0.3s ease-out',
-      maxWidth: '350px'
+      animation: 'toastSlideIn 0.3s cubic-bezier(0.21, 1.02, 0.73, 1)',
+      minWidth: '280px'
     }}>
       <div style={{ flexShrink: 0 }}>
-        <Spinner size="24px" borderWidth="3px" />
+        <Spinner size="16px" borderWidth="2px" color="#46beffff" />
       </div>
       
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', flex: 1 }}>
         <span style={{
           fontSize: '14px',
-          color: '#111827',
-          fontWeight: 600
+          color: '#fafafa',
+          fontWeight: 500
         }}>
           Fetching binary data...
         </span>
         
-        {currentDate && (
-          <span style={{
-            fontSize: '12px',
-            color: '#6b7280'
-          }}>
-            Processing: {currentDate.toLocaleDateString()} {currentDate.toLocaleTimeString()}
-          </span>
-        )}
-        
-        {fileCount !== undefined && (
-          <span style={{
-            fontSize: '12px',
-            color: '#6b7280'
-          }}>
-            {fileCount.toLocaleString()} files loaded
-          </span>
-        )}
+        <span style={{
+          fontSize: '12px',
+          color: '#a1a1aa'
+        }}>
+          {currentDate && (
+            <>{currentDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} {currentDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}</>
+          )}
+          {currentDate && fileCount !== undefined && fileCount > 0 && ' · '}
+          {fileCount !== undefined && fileCount > 0 && (
+            <>{fileCount.toLocaleString()} files</>
+          )}
+        </span>
       </div>
 
       <style>{`
-        @keyframes slideIn {
-          from { transform: translateY(20px); opacity: 0; }
-          to { transform: translateY(0); opacity: 1; }
+        @keyframes toastSlideIn {
+          from { 
+            transform: translateY(100%);
+            opacity: 0;
+          }
+          to { 
+            transform: translateY(0);
+            opacity: 1;
+          }
         }
       `}</style>
     </div>
