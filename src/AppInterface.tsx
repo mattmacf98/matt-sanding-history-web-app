@@ -449,6 +449,9 @@ const AppInterface: React.FC<AppViewProps> = ({
       const savedCamera = localStorage.getItem('selectedCamera');
       if (savedCamera && cameraComponentNames.includes(savedCamera)) {
         setSelectedCamera(savedCamera);
+      } else {
+        // Clear invalid selection so dropdown shows placeholder
+        setSelectedCamera('');
       }
     }
   }, [cameraComponentNames, selectedCamera]);
