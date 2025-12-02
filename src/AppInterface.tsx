@@ -803,7 +803,11 @@ const AppInterface: React.FC<AppViewProps> = ({
                 <label htmlFor="camera-select" className="video-store-selector-label">
                   Select camera resource
                 </label>
-                {cameraComponentNames.length > 0 ? (
+                {!robotClient ? (
+                  <div className="video-store-selector-message info">
+                    Connect to a robot to select a camera
+                  </div>
+                ) : cameraComponentNames.length > 0 ? (
                   <select
                     id="camera-select"
                     value={selectedCamera}
@@ -819,9 +823,9 @@ const AppInterface: React.FC<AppViewProps> = ({
                     ))}
                   </select>
                 ) : (
-                  <p>
-                    No camera resources found.
-                  </p>
+                  <div className="video-store-selector-message info">
+                    No camera resources found
+                  </div>
                 )}
               </div>
             </div>
