@@ -431,31 +431,31 @@ const AppInterface: React.FC<AppViewProps> = ({
     )
   );
 
+  // Track if we've done the initial camera auto-selection
+  const [hasAutoSelectedCamera, setHasAutoSelectedCamera] = useState(false);
+
   // Auto-select camera: if only one available, select it; otherwise restore from localStorage
+  // Only runs once on initial load
   useEffect(() => {
-    if (cameraComponentNames.length === 0) return;
+    if (cameraComponentNames.length === 0 || hasAutoSelectedCamera) return;
+    
+    // Mark that we've done the auto-selection
+    setHasAutoSelectedCamera(true);
     
     // If only one camera, auto-select it
     if (cameraComponentNames.length === 1) {
       const onlyCamera = cameraComponentNames[0];
-      if (selectedCamera !== onlyCamera) {
-        setSelectedCamera(onlyCamera);
-        localStorage.setItem('selectedCamera', onlyCamera);
-      }
+      setSelectedCamera(onlyCamera);
+      localStorage.setItem('selectedCamera', onlyCamera);
       return;
     }
     
-    // If multiple cameras and current selection is invalid, try to restore from localStorage
-    if (!selectedCamera || !cameraComponentNames.includes(selectedCamera)) {
-      const savedCamera = localStorage.getItem('selectedCamera');
-      if (savedCamera && cameraComponentNames.includes(savedCamera)) {
-        setSelectedCamera(savedCamera);
-      } else {
-        // Clear invalid selection so dropdown shows placeholder
-        setSelectedCamera('');
-      }
+    // If multiple cameras, try to restore from localStorage
+    const savedCamera = localStorage.getItem('selectedCamera');
+    if (savedCamera && cameraComponentNames.includes(savedCamera)) {
+      setSelectedCamera(savedCamera);
     }
-  }, [cameraComponentNames, selectedCamera]);
+  }, [cameraComponentNames, hasAutoSelectedCamera]);
 
   const openBeforeAfterModal = (beforeImage: VIAM.dataApi.BinaryData | null, afterImage: VIAM.dataApi.BinaryData | null) => {
     setBeforeAfterModal({ beforeImage, afterImage });
