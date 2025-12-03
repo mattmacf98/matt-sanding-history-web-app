@@ -132,7 +132,9 @@ function App() {
     console.log("total files count:", files.size);
     console.log("total video files count:", videoFiles.size);
 
-    setFetchTimestamp(null)
+    if (shouldSetLoadingState) {
+      setFetchTimestamp(null);
+    }
   };
 
   useEffect(() => {

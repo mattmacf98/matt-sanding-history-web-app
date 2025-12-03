@@ -49,14 +49,28 @@ const StepVideosGrid: React.FC<StepVideosGridProps> = ({
     };
   }, []);
 
-  // Update current videos in the polling manager and check for completed requests
-  pollingManager.setFetchData(() => fetchVideos(step.start, false));
+  // Register this step's fetch function with the polling manager when generating
+  // The polling manager will use the most recent fetchVideos function set
+  const registerFetchForPolling = () => {
+    pollingManager.setFetchData(() => fetchVideos(step.start, false));
+  };
 
   // Update polling manager whenever videoFiles changes
   useEffect(() => {
     pollingManager.updateCurrentVideos(videoFiles);
     pollingManager.forceVideoCheck();
   }, [videoFiles]);
+
+  // Stop polling if videos are now available (handles the case where video appears)
+  useEffect(() => {
+    if (stepVideos.length > 0 && isPolling) {
+      setIsPolling(false);
+      if (requestIdRef.current) {
+        pollingManager.removeRequest(requestIdRef.current);
+        requestIdRef.current = null;
+      }
+    }
+  }, [stepVideos, isPolling]);
 
   // Clean up on unmount
   useEffect(() => {
@@ -86,6 +100,8 @@ const StepVideosGrid: React.FC<StepVideosGridProps> = ({
       return;
     }
 
+    // Register fetch function for this step's time range
+    registerFetchForPolling();
 
     setIsPolling(true);
 
