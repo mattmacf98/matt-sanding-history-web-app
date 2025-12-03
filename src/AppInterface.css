@@ -8,7 +8,8 @@ body {
   padding: 0;
   height: 100vh;
   overflow-x: hidden;
-  font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui,
+    sans-serif;
 }
 
 h4 {
@@ -256,7 +257,8 @@ ol {
 }
 
 .font-mono {
-  font-family: ui-monospace, "SF Mono", Monaco, "Cascadia Code", "Roboto Mono", Consolas, "Courier New", monospace;
+  font-family: ui-monospace, "SF Mono", Monaco, "Cascadia Code", "Roboto Mono",
+    Consolas, "Courier New", monospace;
 }
 
 /* Shadow utilities */
@@ -594,7 +596,8 @@ button:focus {
   font-size: 14px;
   color: #6b7280;
   font-weight: 500;
-  font-family: ui-monospace, "SF Mono", Monaco, "Cascadia Code", "Roboto Mono", Consolas, "Courier New", monospace;
+  font-family: ui-monospace, "SF Mono", Monaco, "Cascadia Code", "Roboto Mono",
+    Consolas, "Courier New", monospace;
 }
 
 .pass-files-section {
@@ -674,7 +677,8 @@ button:focus {
   font-size: 12px;
   color: #374151;
   font-weight: 500;
-  font-family: ui-monospace, "SF Mono", Monaco, "Cascadia Code", "Roboto Mono", Consolas, "Courier New", monospace;
+  font-family: ui-monospace, "SF Mono", Monaco, "Cascadia Code", "Roboto Mono",
+    Consolas, "Courier New", monospace;
   white-space: nowrap;
 }
 
@@ -697,7 +701,8 @@ button:focus {
   padding: 4px 8px;
   background: #f9fafb;
   border-radius: 4px;
-  font-family: ui-monospace, "SF Mono", Monaco, "Cascadia Code", "Roboto Mono", Consolas, "Courier New", monospace;
+  font-family: ui-monospace, "SF Mono", Monaco, "Cascadia Code", "Roboto Mono",
+    Consolas, "Courier New", monospace;
 }
 
 .step-missing {
@@ -742,9 +747,6 @@ button:focus {
   align-items: center;
   gap: 4px;
 }
-  color: #9ca3af;
-  font-weight: 500;
-}
 
 .time-value {
   font-size: 12px;
@@ -760,7 +762,8 @@ button:focus {
   padding: 2px 6px;
   background: #f9fafb;
   border-radius: 4px;
-  font-family: ui-monospace, "SF Mono", Monaco, "Cascadia Code", "Roboto Mono", Consolas, "Courier New", monospace;
+  font-family: ui-monospace, "SF Mono", Monaco, "Cascadia Code", "Roboto Mono",
+    Consolas, "Courier New", monospace;
 }
 
 .pass-section {
@@ -791,7 +794,8 @@ button:focus {
 .pass-duration {
   font-size: 12px;
   color: #6b7280;
-  font-family: ui-monospace, "SF Mono", Monaco, "Cascadia Code", "Roboto Mono", Consolas, "Courier New", monospace;
+  font-family: ui-monospace, "SF Mono", Monaco, "Cascadia Code", "Roboto Mono",
+    Consolas, "Courier New", monospace;
 }
 
 .steps-header-container {
@@ -905,7 +909,8 @@ button:focus {
 .video-time {
   font-size: 10px;
   color: #9ca3af;
-  font-family: ui-monospace, "SF Mono", Monaco, "Cascadia Code", "Roboto Mono", Consolas, "Courier New", monospace;
+  font-family: ui-monospace, "SF Mono", Monaco, "Cascadia Code", "Roboto Mono",
+    Consolas, "Courier New", monospace;
 }
 
 /* Video Modal Styles */
@@ -1011,12 +1016,8 @@ button:focus {
 
 /* Import formatTimestamp for modal */
 .formatTimestamp {
-  font-family: ui-monospace, "SF Mono", Monaco, "Cascadia Code", "Roboto Mono", Consolas, "Courier New", monospace;
-}
-  font-size: 14px;
-  transition: background-color 0.2s;
-  display: inline-block;
-  text-align: center;
+  font-family: ui-monospace, "SF Mono", Monaco, "Cascadia Code", "Roboto Mono",
+    Consolas, "Courier New", monospace;
 }
 
 .video-modal-button.primary {
@@ -1039,7 +1040,8 @@ button:focus {
 
 /* Import formatTimestamp for modal */
 .formatTimestamp {
-  font-family: ui-monospace, "SF Mono", Monaco, "Cascadia Code", "Roboto Mono", Consolas, "Courier New", monospace;
+  font-family: ui-monospace, "SF Mono", Monaco, "Cascadia Code", "Roboto Mono",
+    Consolas, "Courier New", monospace;
 }
 
 /* Files Grid Styles */
@@ -1113,10 +1115,12 @@ button:focus {
 .file-time {
   font-size: 10px;
   color: #6b7280;
-  font-family: ui-monospace, "SF Mono", Monaco, "Cascadia Code", "Roboto Mono", Consolas, "Courier New", monospace;
+  font-family: ui-monospace, "SF Mono", Monaco, "Cascadia Code", "Roboto Mono",
+    Consolas, "Courier New", monospace;
 }
 
-.no-files-message, .no-videos-message {
+.no-files-message,
+.no-videos-message {
   grid-column: 1 / -1;
   text-align: center;
   padding: 0.25rem 0 0;
@@ -1412,7 +1416,8 @@ button:focus {
 .info-value {
   font-size: 12px;
   color: #1f2937;
-  font-family: ui-monospace, "SF Mono", Monaco, "Cascadia Code", "Roboto Mono", Consolas, "Courier New", monospace;
+  font-family: ui-monospace, "SF Mono", Monaco, "Cascadia Code", "Roboto Mono",
+    Consolas, "Courier New", monospace;
   padding: 4px 8px;
   border-radius: 4px;
   border: 1px solid #d1d5db;
@@ -1439,7 +1444,8 @@ button:focus {
 
 /* Pass ID styling */
 .pass-id {
-  font-family: ui-monospace, "SF Mono", Monaco, "Cascadia Code", "Roboto Mono", Consolas, "Courier New", monospace;
+  font-family: ui-monospace, "SF Mono", Monaco, "Cascadia Code", "Roboto Mono",
+    Consolas, "Courier New", monospace;
   font-size: 11px;
   color: #6b7280;
   background-color: #f3f4f6;
@@ -1504,7 +1510,8 @@ button:focus {
   font-size: 15px;
   color: #334155;
   font-weight: 700;
-  font-family: ui-monospace, "SF Mono", Monaco, "Cascadia Code", "Roboto Mono", Consolas, "Courier New", monospace;
+  font-family: ui-monospace, "SF Mono", Monaco, "Cascadia Code", "Roboto Mono",
+    Consolas, "Courier New", monospace;
   line-height: 1.1;
 }
 
@@ -1630,7 +1637,7 @@ button:focus {
   .pagination-container {
     flex-wrap: nowrap;
   }
-  
+
   .pagination-info,
   .items-per-page {
     margin-top: 0;
