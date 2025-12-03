@@ -70,18 +70,17 @@ const VideoStoreSelector: React.FC<VideoStoreSelectorProps> = ({
   }, [robotClient, onVideoStoreSelected]);
 
   // Auto-select: if only one resource, select it; otherwise restore from localStorage
+  // Always ensure the client is created on initial load
   useEffect(() => {
     if (resources.length === 0 || !robotClient || hasAutoSelected.current) return;
     
+    hasAutoSelected.current = true;
     const resourceNames = resources.map(r => r.name);
     
     // If only one resource, auto-select it
     if (resources.length === 1) {
       const onlyResource = resources[0].name;
-      if (selectedResource !== onlyResource) {
-        hasAutoSelected.current = true;
-        handleResourceSelect(onlyResource);
-      }
+      handleResourceSelect(onlyResource);
       return;
     }
     
@@ -90,11 +89,9 @@ const VideoStoreSelector: React.FC<VideoStoreSelectorProps> = ({
     
     if (selectedResource && resourceNames.includes(selectedResource)) {
       // Current selection is valid, create the client
-      hasAutoSelected.current = true;
       handleResourceSelect(selectedResource);
     } else if (savedResource && resourceNames.includes(savedResource)) {
       // Restore from localStorage
-      hasAutoSelected.current = true;
       handleResourceSelect(savedResource);
     } else {
       // Clear invalid selection

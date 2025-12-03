@@ -5,6 +5,7 @@ import StepVideosGrid from './StepVideosGrid';
 import VideoStoreSelector from './VideoStoreSelector';
 import ImageDisplay from './ImageDisplay';
 import BeforeAfterModal from './BeforeAfterModal';
+import GlobalLoadingIndicator from './components/GlobalLoadingIndicator';
 import {
   formatDurationToMinutesSeconds,
   formatTimeDifference,
@@ -430,31 +431,31 @@ const AppInterface: React.FC<AppViewProps> = ({
     )
   );
 
+  // Track if we've done the initial camera auto-selection
+  const [hasAutoSelectedCamera, setHasAutoSelectedCamera] = useState(false);
+
   // Auto-select camera: if only one available, select it; otherwise restore from localStorage
+  // Only runs once on initial load
   useEffect(() => {
-    if (cameraComponentNames.length === 0) return;
+    if (cameraComponentNames.length === 0 || hasAutoSelectedCamera) return;
+    
+    // Mark that we've done the auto-selection
+    setHasAutoSelectedCamera(true);
     
     // If only one camera, auto-select it
     if (cameraComponentNames.length === 1) {
       const onlyCamera = cameraComponentNames[0];
-      if (selectedCamera !== onlyCamera) {
-        setSelectedCamera(onlyCamera);
-        localStorage.setItem('selectedCamera', onlyCamera);
-      }
+      setSelectedCamera(onlyCamera);
+      localStorage.setItem('selectedCamera', onlyCamera);
       return;
     }
     
-    // If multiple cameras and current selection is invalid, try to restore from localStorage
-    if (!selectedCamera || !cameraComponentNames.includes(selectedCamera)) {
-      const savedCamera = localStorage.getItem('selectedCamera');
-      if (savedCamera && cameraComponentNames.includes(savedCamera)) {
-        setSelectedCamera(savedCamera);
-      } else {
-        // Clear invalid selection so dropdown shows placeholder
-        setSelectedCamera('');
-      }
+    // If multiple cameras, try to restore from localStorage
+    const savedCamera = localStorage.getItem('selectedCamera');
+    if (savedCamera && cameraComponentNames.includes(savedCamera)) {
+      setSelectedCamera(savedCamera);
     }
-  }, [cameraComponentNames, selectedCamera]);
+  }, [cameraComponentNames, hasAutoSelectedCamera]);
 
   const openBeforeAfterModal = (beforeImage: VIAM.dataApi.BinaryData | null, afterImage: VIAM.dataApi.BinaryData | null) => {
     setBeforeAfterModal({ beforeImage, afterImage });
@@ -1076,48 +1077,52 @@ const AppInterface: React.FC<AppViewProps> = ({
                                 <tr className="expanded-content">
                                   <td colSpan={11}>
                                     <div className="pass-details">
-                                      {(pass.blue_point_count !== undefined || pass.sanding_distance_mm !== undefined) && (
-                                        <div className="info-section">
-                                          <div className="info-grid">
-                                            {pass.blue_point_count !== undefined && (
-                                              <div className="info-item">
-                                                <span className="info-label" style={{ color: '#374151' }}>
-                                                  Blue Points
-                                                  {pass.blue_point_diff_percent !== undefined && (
-                                                    <span style={{ 
-                                                      marginLeft: '8px', 
-                                                      fontSize: '12px',
-                                                      color: '#6b7280',
-                                                      fontWeight: '500'
-                                                    }}>
-                                                      ({pass.blue_point_diff_percent > 0 ? '+' : ''}{pass.blue_point_diff_percent.toFixed(1)}%)
-                                                    </span>
-                                                  )}
-                                                </span>
-                                                <span className="info-value">
-                                                  {pass.blue_point_count.toLocaleString()}
-                                                </span>
-                                              </div>
-                                            )}
-                                            
-                                            {pass.sanding_distance_mm !== undefined && (
-                                              <div className="info-item">
-                                                <span className="info-label" style={{ color: '#374151' }}>Sanding Distance</span>
-                                                <span className="info-value">
-                                                  {pass.sanding_distance_mm >= 1000 
-                                                    ? `${(pass.sanding_distance_mm / 1000).toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 2 })} m`
-                                                    : `${pass.sanding_distance_mm.toFixed(1)} mm`
-                                                  }
-                                                </span>
-                                              </div>
-                                            )}
-                                          </div>
-                                        </div>
-                                      )}
-
                                       {/* Build information section moved inside expanded row */}
                                       {pass.build_info && (
                                         <div className="flex gap-8">
+                                          <div className="info-section">
+                                            <div style={{ 
+                                              display: 'flex', 
+                                              alignItems: 'center',
+                                              marginBottom: '12px'
+                                            }}>
+                                              <h4 style={{ margin: 0 }}>Blue points</h4>
+                                            </div>
+                                            <div className="info-grid">
+                                              {pass.blue_point_count !== undefined && (
+                                                <div className="info-item">
+                                                  <span className="info-label">
+                                                    Blue Points
+                                                    {pass.blue_point_diff_percent !== undefined && (
+                                                      <span style={{ 
+                                                        marginLeft: '8px', 
+                                                        fontSize: '12px',
+                                                        color: '#6b7280',
+                                                        fontWeight: '500'
+                                                      }}>
+                                                        ({pass.blue_point_diff_percent > 0 ? '+' : ''}{pass.blue_point_diff_percent.toFixed(1)}%)
+                                                      </span>
+                                                    )}
+                                                  </span>
+                                                  <span className="info-value">
+                                                    {pass.blue_point_count.toLocaleString()}
+                                                  </span>
+                                                </div>
+                                              )}
+                                              
+                                              {pass.sanding_distance_mm !== undefined && (
+                                                <div className="info-item">
+                                                  <span className="info-label">Sanding Distance</span>
+                                                  <span className="info-value">
+                                                    {pass.sanding_distance_mm >= 1000 
+                                                      ? `${(pass.sanding_distance_mm / 1000).toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 2 })} m`
+                                                      : `${pass.sanding_distance_mm.toFixed(1)} mm`
+                                                    }
+                                                  </span>
+                                                </div>
+                                              )}
+                                            </div>
+                                          </div>
                                           <div className="info-section">
                                             <div style={{ 
                                               display: 'flex', 
@@ -1595,6 +1600,12 @@ const AppInterface: React.FC<AppViewProps> = ({
           viamClient={viamClient}
         />
       )}
+
+      <GlobalLoadingIndicator 
+        isLoading={!!fetchTimestamp} 
+        currentDate={fetchTimestamp}
+        fileCount={files.size + videoFiles.size + imageFiles.size}
+      />
     </div>
   );
 };
