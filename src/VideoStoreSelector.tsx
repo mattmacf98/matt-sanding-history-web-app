@@ -1,5 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import * as VIAM from "@viamrobotics/sdk";
+
+const STORAGE_KEY = 'selectedVideoStore';
 
 interface VideoStoreSelectorProps {
   robotClient: VIAM.RobotClient | null;
@@ -17,41 +19,44 @@ const VideoStoreSelector: React.FC<VideoStoreSelectorProps> = ({
   onVideoStoreSelected
 }) => {
   const [resources, setResources] = useState<Resource[]>([]);
-  const [selectedResource, setSelectedResource] = useState<string>('');
+  const [selectedResource, setSelectedResource] = useState<string>(() => {
+    return localStorage.getItem(STORAGE_KEY) || '';
+  });
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  
+  // Track if we've done initial selection for current resources
+  const hasAutoSelected = useRef(false);
 
   // Fetch available resources when robotClient changes
   useEffect(() => {
     // Don't fetch if no robot client
     if (!robotClient) {
       setResources([]);
-      setSelectedResource('');
       setError(null);
       onVideoStoreSelected(null);
+      hasAutoSelected.current = false;
       return;
     }
 
     const fetchResources = async () => {
       setIsLoading(true);
       setError(null);
+      hasAutoSelected.current = false;
 
       try {
         // Get resource names from the robot client
         const resourceNames = await robotClient.resourceNames();
 
-        // Filter for components with type "component" and subtype "generic"
+        // Filter for components with type "component" and subtype "generic", excluding webapp
         const filteredResources = resourceNames.filter(
           (resource: any) =>
             resource.type === "component" &&
-            resource.subtype === "generic"
+            resource.subtype === "generic" &&
+            resource.name !== "webapp"
         );
 
         setResources(filteredResources);
-
-        // Clear selection when resources change
-        setSelectedResource('');
-        onVideoStoreSelected(null);
       } catch (err) {
         console.error('Failed to fetch resources:', err);
         setError('Failed to fetch available resources');
@@ -64,6 +69,41 @@ const VideoStoreSelector: React.FC<VideoStoreSelectorProps> = ({
     fetchResources();
   }, [robotClient, onVideoStoreSelected]);
 
+  // Auto-select: if only one resource, select it; otherwise restore from localStorage
+  useEffect(() => {
+    if (resources.length === 0 || !robotClient || hasAutoSelected.current) return;
+    
+    const resourceNames = resources.map(r => r.name);
+    
+    // If only one resource, auto-select it
+    if (resources.length === 1) {
+      const onlyResource = resources[0].name;
+      if (selectedResource !== onlyResource) {
+        hasAutoSelected.current = true;
+        handleResourceSelect(onlyResource);
+      }
+      return;
+    }
+    
+    // Multiple resources - try to restore from localStorage or validate current selection
+    const savedResource = localStorage.getItem(STORAGE_KEY);
+    
+    if (selectedResource && resourceNames.includes(selectedResource)) {
+      // Current selection is valid, create the client
+      hasAutoSelected.current = true;
+      handleResourceSelect(selectedResource);
+    } else if (savedResource && resourceNames.includes(savedResource)) {
+      // Restore from localStorage
+      hasAutoSelected.current = true;
+      handleResourceSelect(savedResource);
+    } else {
+      // Clear invalid selection
+      setSelectedResource('');
+      localStorage.removeItem(STORAGE_KEY);
+      onVideoStoreSelected(null);
+    }
+  }, [resources, robotClient]);
+
   const handleResourceSelect = (resourceName: string) => {
     setSelectedResource(resourceName);
 
@@ -71,6 +111,7 @@ const VideoStoreSelector: React.FC<VideoStoreSelectorProps> = ({
       try {
         const videoStoreClient = new VIAM.GenericComponentClient(robotClient, resourceName);
         onVideoStoreSelected(videoStoreClient);
+        localStorage.setItem(STORAGE_KEY, resourceName);
         setError(null);
       } catch (err) {
         console.error('Failed to create video store client:', err);
@@ -79,15 +120,19 @@ const VideoStoreSelector: React.FC<VideoStoreSelectorProps> = ({
       }
     } else {
       onVideoStoreSelected(null);
+      localStorage.removeItem(STORAGE_KEY);
     }
   };
 
-  // Conditional rendering AFTER all hooks
+  // Show label with message when robot not connected
   if (!robotClient) {
     return (
       <div className="video-store-selector">
+        <label className="video-store-selector-label">
+          Select video store resource
+        </label>
         <div className="video-store-selector-message info">
-          Robot not connected
+          Connect to a robot to select a video store
         </div>
       </div>
     );

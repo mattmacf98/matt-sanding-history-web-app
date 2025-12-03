@@ -315,7 +315,10 @@ const AppInterface: React.FC<AppViewProps> = ({
   const [activeRoute, setActiveRoute] = useState('live');
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
   const [videoStoreClient, setVideoStoreClient] = useState<VIAM.GenericComponentClient | null>(null);
-  const [selectedCamera, setSelectedCamera] = useState<string>('');
+  const [selectedCamera, setSelectedCamera] = useState<string>(() => {
+    // Initialize from localStorage if available
+    return localStorage.getItem('selectedCamera') || '';
+  });
   const [beforeAfterModal, setBeforeAfterModal] = useState<{
     beforeImage: VIAM.dataApi.BinaryData | null;
     afterImage: VIAM.dataApi.BinaryData | null;
@@ -426,6 +429,32 @@ const AppInterface: React.FC<AppViewProps> = ({
         .filter((name): name is string => !!name)
     )
   );
+
+  // Auto-select camera: if only one available, select it; otherwise restore from localStorage
+  useEffect(() => {
+    if (cameraComponentNames.length === 0) return;
+    
+    // If only one camera, auto-select it
+    if (cameraComponentNames.length === 1) {
+      const onlyCamera = cameraComponentNames[0];
+      if (selectedCamera !== onlyCamera) {
+        setSelectedCamera(onlyCamera);
+        localStorage.setItem('selectedCamera', onlyCamera);
+      }
+      return;
+    }
+    
+    // If multiple cameras and current selection is invalid, try to restore from localStorage
+    if (!selectedCamera || !cameraComponentNames.includes(selectedCamera)) {
+      const savedCamera = localStorage.getItem('selectedCamera');
+      if (savedCamera && cameraComponentNames.includes(savedCamera)) {
+        setSelectedCamera(savedCamera);
+      } else {
+        // Clear invalid selection so dropdown shows placeholder
+        setSelectedCamera('');
+      }
+    }
+  }, [cameraComponentNames, selectedCamera]);
 
   const openBeforeAfterModal = (beforeImage: VIAM.dataApi.BinaryData | null, afterImage: VIAM.dataApi.BinaryData | null) => {
     setBeforeAfterModal({ beforeImage, afterImage });
@@ -749,13 +778,14 @@ const AppInterface: React.FC<AppViewProps> = ({
             <div className='flex gap-8'>
               {machineName && (
                 <div className="video-store-selector">
-                  <div className="video-store-selector-label" style={{ marginBottom: '0.75rem' }}>Machine name</div>
-                  <div className="text-sm font-semibold text-zinc-900 py-2">
+                  <div className="video-store-selector-label" style={{ marginBottom: '0.6rem' }}>Machine name</div>
+                  <div>
                     <span style={{
+                      display: 'inline-block',
                       backgroundColor: '#f3f3f3',
                       color: 'rgb(37 37 37)',
-                      padding: '4px 12px',
-                      borderRadius: '4px',
+                      padding: '0.5rem 0.75rem',
+                      borderRadius: '0.375rem',
                       fontSize: '14px',
                       fontWeight: '600',
                     }}>
@@ -774,11 +804,18 @@ const AppInterface: React.FC<AppViewProps> = ({
                 <label htmlFor="camera-select" className="video-store-selector-label">
                   Select camera resource
                 </label>
-                {cameraComponentNames.length > 0 ? (
+                {!robotClient ? (
+                  <div className="video-store-selector-message info">
+                    Connect to a robot to select a camera
+                  </div>
+                ) : cameraComponentNames.length > 0 ? (
                   <select
                     id="camera-select"
                     value={selectedCamera}
-                    onChange={(e) => setSelectedCamera(e.target.value)}
+                    onChange={(e) => {
+                      setSelectedCamera(e.target.value);
+                      localStorage.setItem('selectedCamera', e.target.value);
+                    }}
                     className="video-store-selector-select"
                   >
                     <option value="">Select a camera resource</option>
@@ -787,9 +824,9 @@ const AppInterface: React.FC<AppViewProps> = ({
                     ))}
                   </select>
                 ) : (
-                  <p>
-                    No camera resources found.
-                  </p>
+                  <div className="video-store-selector-message info">
+                    No camera resources found
+                  </div>
                 )}
               </div>
             </div>
