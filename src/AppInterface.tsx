@@ -35,6 +35,7 @@ interface PassFilesProps {
 const PassFiles: React.FC<PassFilesProps> = ({
   pass,
   files,
+  viamClient,
   fetchTimestamp,
   expandedFiles,
   toggleFilesExpansion,
@@ -43,6 +44,26 @@ const PassFiles: React.FC<PassFilesProps> = ({
   debouncedFileSearchInputs,
 }) => {
   const passId = pass.pass_id;
+
+  const handleDownload = async (file: VIAM.dataApi.BinaryData) => {
+    try {
+      const data = await viamClient.dataClient.binaryDataByIds([file.metadata!.binaryDataId]);
+      if (data.length > 0) {
+        const blob = new Blob([new Uint8Array(data[0].binary)]);
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = file.metadata?.fileName?.split('/').pop() || 'download';
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+      }
+    } catch (error) {
+      console.error('Error downloading file:', error);
+      alert('Failed to download file');
+    }
+  };
 
   const passFiles = useMemo(() => {
     const passStart = new Date(pass.start);
@@ -222,8 +243,12 @@ const PassFiles: React.FC<PassFilesProps> = ({
                       </span>
                     </div>
                     <a
-                      href={file.metadata?.uri}
-                      download={file.metadata?.fileName?.split('/').pop() || 'download'}
+                      href="#"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        handleDownload(file);
+                      }}
                       style={{
                         marginLeft: '12px',
                         padding: '6px 8px',
@@ -237,9 +262,6 @@ const PassFiles: React.FC<PassFilesProps> = ({
                         cursor: 'pointer',
                         display: 'inline-block',
                         border: 'none'
-                      }}
-                      onClick={(e) => {
-                        e.stopPropagation();
                       }}
                     >
                       Download
