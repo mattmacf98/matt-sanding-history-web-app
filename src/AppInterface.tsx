@@ -1015,18 +1015,27 @@ const AppInterface: React.FC<AppViewProps> = ({
                                           <path d="M19,21H8V7H19M19,5H8A2,2 0 0,0 6,7V21A2,2 0 0,0 8,23H19A2,2 0 0,0 21,21V7A2,2 0 0,0 19,5M16,1H4A2,2 0 0,0 2,3V17H4V3H16V1Z" />
                                         </svg>
                                       </button>
-                                      {passNotesData.length > 0 && passNotesData[0].note_text.trim() && (
-                                        <span
-                                          style={{
-                                            fontSize: '18px',
-                                            display: 'flex',
-                                            alignItems: 'center'
-                                          }}
-                                          title="This pass has notes"
-                                        >
-                                          📝
-                                        </span>
-                                      )}
+                                      {(() => {
+                                        const hasNotes = passNotesData.length > 0 && passNotesData[0].note_text.trim();
+                                        const diagnosisData = passDiagnoses.get(passId);
+                                        const hasDiagnosis = diagnosisData && (diagnosisData.symptom || diagnosisData.cause);
+                                        
+                                        if (hasNotes || hasDiagnosis) {
+                                          return (
+                                            <span
+                                              style={{
+                                                fontSize: '18px',
+                                                display: 'flex',
+                                                alignItems: 'center'
+                                              }}
+                                              title={hasNotes && hasDiagnosis ? "This pass has notes and diagnosis" : hasNotes ? "This pass has notes" : "This pass has diagnosis"}
+                                            >
+                                              📝
+                                            </span>
+                                          );
+                                        }
+                                        return null;
+                                      })()}
                                     </div>
                                   ) : (
                                     '—'
