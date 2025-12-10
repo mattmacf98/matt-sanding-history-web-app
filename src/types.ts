@@ -29,6 +29,47 @@ export interface PassNote {
   created_by: string;
 }
 
+// Symptom options - what happened during the failure
+export const SYMPTOM_OPTIONS = [
+  'Arm Stopped',
+  'User Cancelled',
+  'Motion Planning Failed',
+  'Camera/Sensor Issue',
+  'Arm Connection Lost',
+  'Collision Detected',
+  'Joint Out of Bounds',
+  'Mesh Generation Failed',
+  'E-Stop Triggered',
+  'System Error',
+  'Other',
+] as const;
+
+export type Symptom = typeof SYMPTOM_OPTIONS[number];
+
+// Cause options - why the failure happened
+export const CAUSE_OPTIONS = [
+  'Intentional Stop',
+  'Part Issue',
+  'USB/Cable Issue',
+  'Network Issue',
+  'Configuration Error',
+  'Software Bug',
+  'Hardware Malfunction',
+  'Environmental',
+  'Unknown',
+  'Other',
+] as const;
+
+export type Cause = typeof CAUSE_OPTIONS[number];
+
+export interface PassDiagnosis {
+  pass_id: string;
+  symptom?: Symptom;
+  cause?: Cause;
+  updated_at: string;
+  updated_by: string;
+}
+
 export interface RobotConfigMetadata {
   partId: string;
   robotId: string;

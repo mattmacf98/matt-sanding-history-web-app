@@ -3,9 +3,9 @@ import * as VIAM from "@viamrobotics/sdk";
 import AppInterface from './AppInterface';
 import Cookies from "js-cookie";
 import { JsonValue } from '@viamrobotics/sdk';
-import { Pass, PassNote } from './types';
+import { Pass, PassNote, PassDiagnosis } from './types';
 import { Timestamp } from '@bufbuild/protobuf';
-import { createNotesManager } from './lib/notesManager';
+import { createPassMetadataManager } from './lib/passMetadataManager';
 
 const sandingSummaryName = "sanding-summary";
 const sandingSummaryComponentType = "rdk:component:sensor";
@@ -23,6 +23,7 @@ function App() {
   const [fetchTimestamp, setFetchTimestamp] = useState<Date | null>(null);
   const [partId, setPartId] = useState<string>('');
   const [passNotes, setPassNotes] = useState<Map<string, PassNote[]>>(new Map());
+  const [passDiagnoses, setPassDiagnoses] = useState<Map<string, PassDiagnosis>>(new Map());
   const [fetchingNotes, setFetchingNotes] = useState<boolean>(false);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 7; // 7 days per page
@@ -278,16 +279,20 @@ function App() {
 
       setPassSummaries(processedPasses);
 
-      // Fetch all notes for all passes
+      // Fetch all notes and diagnoses for all passes
       if (processedPasses.length > 0 && extractedPartId) {
         const passIds = processedPasses.map(pass => pass.pass_id).filter(Boolean);
 
         setFetchingNotes(true);
 
-        const notesManager = createNotesManager(viamClient, machineId);
-        const fetchedNotes = await notesManager.fetchNotesForPasses(passIds);
+        const metadataManager = createPassMetadataManager(viamClient, machineId);
+        const [fetchedNotes, fetchedDiagnoses] = await Promise.all([
+          metadataManager.fetchNotesForPasses(passIds),
+          metadataManager.fetchDiagnosesForPasses(passIds)
+        ]);
         
         setPassNotes(fetchedNotes);
+        setPassDiagnoses(fetchedDiagnoses);
         setFetchingNotes(false);
       }
 
@@ -350,6 +355,8 @@ function App() {
       partId={partId}
       passNotes={passNotes}
       onNotesUpdate={setPassNotes}
+      passDiagnoses={passDiagnoses}
+      onDiagnosesUpdate={setPassDiagnoses}
       fetchingNotes={fetchingNotes}
       pagination={{
         currentPage,
