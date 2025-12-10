@@ -1436,16 +1436,11 @@ const AppInterface: React.FC<AppViewProps> = ({
                                         </div>
 
                                         {/* Diagnosis and Notes Section - shows for all passes, diagnosis fields only for failed */}
-                                        <div style={{ margin: '0 12px 24px 12px', maxWidth: '720px' }}>
-                                          <div>
-                                            <h4 style={{ 
-                                              margin: '0 0 16px 0', 
-                                              fontSize: '14px', 
-                                              fontWeight: 600, 
-                                              color: '#374151' 
-                                            }}>
+                                        <div style={{ margin: '1rem 12px 24px 12px' }}>
+                                          <div className="step-card" style={{ minWidth: '50%', backgroundColor: 'transparent' }}>
+                                            <div className="step-name" style={{ textAlign: 'left' }}>
                                               {!pass.success ? 'Diagnosis' : 'Notes'}
-                                            </h4>
+                                            </div>
 
                                             {fetchingNotes ? (
                                               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '80px' }}>
@@ -1461,7 +1456,7 @@ const AppInterface: React.FC<AppViewProps> = ({
                                                 <span style={{ marginLeft: '10px', color: '#6b7280', fontSize: '14px' }}>Loading...</span>
                                               </div>
                                             ) : (
-                                              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                                              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                                                 {/* Diagnosis dropdowns - only for failed passes, displayed in a row */}
                                                 {!pass.success && (
                                                   <div style={{ display: 'flex', gap: '16px' }}>
