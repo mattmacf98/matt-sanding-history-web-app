@@ -16,6 +16,44 @@ export class PassMetadataManager {
   }
 
   /**
+   * Generic helper to parse metadata items by prefix
+   * Reduces duplication between notes and diagnoses parsing
+   */
+  private parseMetadataByPrefix<T>(
+    metadata: Record<string, unknown>,
+    prefix: string,
+    entityName: string
+  ): Map<string, T> {
+    const result = new Map<string, T>();
+
+    Object.keys(metadata).forEach(key => {
+      if (key.startsWith(prefix)) {
+        const passId = key.substring(prefix.length);
+        try {
+          const data = JSON.parse(metadata[key] as string);
+          result.set(passId, data as T);
+        } catch (e) {
+          console.warn(`Failed to parse ${entityName} for pass ${passId}:`, e);
+        }
+      }
+    });
+
+    return result;
+  }
+
+  /**
+   * Generic helper to update metadata with merge
+   * Fetches current metadata, applies changes, and saves back
+   */
+  private async updateMetadata(
+    updateFn: (metadata: Record<string, unknown>) => void
+  ): Promise<void> {
+    const currentMetadata = await this.viamClient.appClient.getRobotMetadata(this.machineId);
+    updateFn(currentMetadata);
+    await this.viamClient.appClient.updateRobotMetadata(this.machineId, currentMetadata);
+  }
+
+  /**
    * Get all notes from metadata - stored as flat key-value pairs
    * Each note is stored as: "note-{passId}": "json-stringified-PassNote"
    */
@@ -25,23 +63,9 @@ export class PassMetadataManager {
     }
 
     const metadata = await this.viamClient.appClient.getRobotMetadata(this.machineId);
-    const notes = new Map<string, PassNote>();
+    this.cachedNotes = this.parseMetadataByPrefix<PassNote>(metadata, NOTE_PREFIX, 'note');
 
-    Object.keys(metadata).forEach(key => {
-      if (key.startsWith(NOTE_PREFIX)) {
-        const passId = key.substring(NOTE_PREFIX.length);
-        try {
-          const noteData = JSON.parse(metadata[key] as string);
-          notes.set(passId, noteData as PassNote);
-        } catch (e) {
-          console.warn(`Failed to parse note for pass ${passId}:`, e);
-        }
-      }
-    });
-
-    this.cachedNotes = notes;
-
-    return notes;
+    return this.cachedNotes;
   }
 
   /**
@@ -54,26 +78,12 @@ export class PassMetadataManager {
     }
 
     const metadata = await this.viamClient.appClient.getRobotMetadata(this.machineId);
-    const diagnoses = new Map<string, PassDiagnosis>();
-
-    Object.keys(metadata).forEach(key => {
-      if (key.startsWith(DIAGNOSIS_PREFIX)) {
-        const passId = key.substring(DIAGNOSIS_PREFIX.length);
-        try {
-          const diagnosisData = JSON.parse(metadata[key] as string);
-          diagnoses.set(passId, diagnosisData as PassDiagnosis);
-        } catch (e) {
-          console.warn(`Failed to parse diagnosis for pass ${passId}:`, e);
-        }
-      }
-    });
-
-    this.cachedDiagnoses = diagnoses;
+    this.cachedDiagnoses = this.parseMetadataByPrefix<PassDiagnosis>(metadata, DIAGNOSIS_PREFIX, 'diagnosis');
 
     // Log all loaded diagnoses
-    console.log(`🔍 Loaded ${diagnoses.size} diagnoses from metadata:`);
-    if (diagnoses.size > 0) {
-      console.table(Array.from(diagnoses.entries()).map(([passId, diagnosis]) => ({
+    console.log(`🔍 Loaded ${this.cachedDiagnoses.size} diagnoses from metadata:`);
+    if (this.cachedDiagnoses.size > 0) {
+      console.table(Array.from(this.cachedDiagnoses.entries()).map(([passId, diagnosis]) => ({
         passId,
         symptom: diagnosis.symptom || '(none)',
         cause: diagnosis.cause || '(none)',
@@ -82,7 +92,7 @@ export class PassMetadataManager {
       })));
     }
 
-    return diagnoses;
+    return this.cachedDiagnoses;
   }
 
   /**
@@ -90,23 +100,19 @@ export class PassMetadataManager {
    * IMPORTANT: Merges with existing metadata to preserve other apps' data
    */
   private async saveNotesMetadata(notes: Map<string, PassNote>): Promise<void> {
-    // Read current metadata to preserve non-note keys
-    const currentMetadata = await this.viamClient.appClient.getRobotMetadata(this.machineId);
+    await this.updateMetadata((metadata) => {
+      // Remove old note keys (cleanup any deleted notes)
+      Object.keys(metadata).forEach(key => {
+        if (key.startsWith(NOTE_PREFIX)) {
+          delete metadata[key];
+        }
+      });
 
-    // Remove old note keys (cleanup any deleted notes)
-    Object.keys(currentMetadata).forEach(key => {
-      if (key.startsWith(NOTE_PREFIX)) {
-        delete currentMetadata[key];
-      }
+      // Add all current notes
+      notes.forEach((note, passId) => {
+        metadata[`${NOTE_PREFIX}${passId}`] = JSON.stringify(note);
+      });
     });
-
-    // Add all current notes
-    notes.forEach((note, passId) => {
-      currentMetadata[`${NOTE_PREFIX}${passId}`] = JSON.stringify(note);
-    });
-
-    // Save merged metadata (preserves other apps' keys)
-    await this.viamClient.appClient.updateRobotMetadata(this.machineId, currentMetadata);
 
     // Update cache
     this.cachedNotes = notes;
@@ -128,9 +134,9 @@ export class PassMetadataManager {
    * Uses incremental update to avoid overwriting other metadata
    */
   private async saveSingleDiagnosis(passId: string, diagnosis: PassDiagnosis): Promise<void> {
-    const currentMetadata = await this.viamClient.appClient.getRobotMetadata(this.machineId);
-    currentMetadata[`${DIAGNOSIS_PREFIX}${passId}`] = JSON.stringify(diagnosis);
-    await this.viamClient.appClient.updateRobotMetadata(this.machineId, currentMetadata);
+    await this.updateMetadata((metadata) => {
+      metadata[`${DIAGNOSIS_PREFIX}${passId}`] = JSON.stringify(diagnosis);
+    });
 
     // Update cache
     if (this.cachedDiagnoses) {
@@ -244,13 +250,17 @@ export class PassMetadataManager {
   async deletePassDiagnosis(passId: string): Promise<void> {
     console.log(`Deleting diagnosis for pass ${passId}`);
 
-    const currentMetadata = await this.viamClient.appClient.getRobotMetadata(this.machineId);
     const key = `${DIAGNOSIS_PREFIX}${passId}`;
+    let found = false;
 
-    if (key in currentMetadata) {
-      delete currentMetadata[key];
-      await this.viamClient.appClient.updateRobotMetadata(this.machineId, currentMetadata);
+    await this.updateMetadata((metadata) => {
+      if (key in metadata) {
+        delete metadata[key];
+        found = true;
+      }
+    });
 
+    if (found) {
       // Update cache
       if (this.cachedDiagnoses) {
         this.cachedDiagnoses.delete(passId);
