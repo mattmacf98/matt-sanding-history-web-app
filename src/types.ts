@@ -31,7 +31,7 @@ export interface PassNote {
 
 // Symptom options - what happened during the failure
 export const SYMPTOM_OPTIONS = [
-  'Arm Stopped',
+  'P-Stop',
   'User Cancelled',
   'Motion Planning Failed',
   'Camera/Sensor Issue',
@@ -50,12 +50,16 @@ export type Symptom = typeof SYMPTOM_OPTIONS[number];
 export const CAUSE_OPTIONS = [
   'Intentional Stop',
   'Part Issue',
-  'USB/Cable Issue',
+  'Cable Management',
+  'Hose Management',
   'Network Issue',
+  'Voltage Issue',
   'Configuration Error',
   'Software Bug',
-  'Hardware Malfunction',
-  'Environmental',
+  'Trajectory Generation',
+  'Inaccurate mesh',
+  'Hole in mesh',
+  'Lunch/EOD',
   'Unknown',
   'Other',
 ] as const;
