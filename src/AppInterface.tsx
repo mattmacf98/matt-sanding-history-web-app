@@ -12,13 +12,13 @@ import {
 } from './lib/videoUtils';
 import { getBeforeAfterImages, getStepVideos } from './lib/passUtils';
 import { formatDurationMs } from './lib/uiUtils';
-import { createNotesManager } from './lib/notesManager';
+import { getPassMetadataManager } from './lib/passMetadataManager';
 import {
   getRobotConfigAtTime,
   downloadRobotConfig,
   getPassConfigComparison,
 } from './lib/configUtils';
-import { Pass, PassNote, Step, RobotConfigMetadata } from './types';
+import { Pass, PassNote, PassDiagnosis, Step, RobotConfigMetadata, SYMPTOM_OPTIONS, CAUSE_OPTIONS } from './types';
 
 interface PassFilesProps {
   pass: Pass;
@@ -305,6 +305,8 @@ interface AppViewProps {
   partId: string;
   passNotes: Map<string, PassNote[]>;
   onNotesUpdate: React.Dispatch<React.SetStateAction<Map<string, PassNote[]>>>;
+  passDiagnoses: Map<string, PassDiagnosis>;
+  onDiagnosesUpdate: React.Dispatch<React.SetStateAction<Map<string, PassDiagnosis>>>;
   fetchingNotes: boolean;
   pagination?: {
     currentPage: number;
@@ -332,6 +334,8 @@ const AppInterface: React.FC<AppViewProps> = ({
   partId,
   passNotes,
   onNotesUpdate,
+  passDiagnoses,
+  onDiagnosesUpdate,
   fetchingNotes,
   pagination,
 }) => {
@@ -347,8 +351,6 @@ const AppInterface: React.FC<AppViewProps> = ({
     afterImage: VIAM.dataApi.BinaryData | null;
   } | null>(null);
   const [noteInputs, setNoteInputs] = useState<Record<string, string>>({});
-  const [savingNotes, setSavingNotes] = useState<Set<string>>(new Set());
-  const [noteSuccess, setNoteSuccess] = useState<Set<string>>(new Set());
   const [downloadingConfigs, setDownloadingConfigs] = useState<Set<string>>(new Set());
   const [configMetadata, setConfigMetadata] = useState<Map<string, RobotConfigMetadata>>(new Map());
   const [loadingConfigMetadata, setLoadingConfigMetadata] = useState<Set<string>>(new Set());
@@ -356,6 +358,12 @@ const AppInterface: React.FC<AppViewProps> = ({
   const [fileSearchInputs, setFileSearchInputs] = useState<Record<string, string>>({});
   const [debouncedFileSearchInputs, setDebouncedFileSearchInputs] = useState<Record<string, string>>({});
   const [expandedErrors, setExpandedErrors] = useState<Set<string>>(new Set());
+
+  // Diagnosis UI state
+  const [diagnosisInputs, setDiagnosisInputs] = useState<Record<string, { symptom?: string; cause?: string }>>({});
+  // Combined saving state for notes + diagnosis
+  const [savingMetadata, setSavingMetadata] = useState<Set<string>>(new Set());
+  const [metadataSuccess, setMetadataSuccess] = useState<Set<string>>(new Set());
 
   // Debounce file search inputs
   useEffect(() => {
@@ -379,6 +387,18 @@ const AppInterface: React.FC<AppViewProps> = ({
     setNoteInputs(initialInputs);
   }, [passNotes]);
 
+  // Initialize diagnosis inputs from existing diagnoses
+  useEffect(() => {
+    const initialDiagnoses: Record<string, { symptom?: string; cause?: string }> = {};
+    passDiagnoses.forEach((diagnosis, passId) => {
+      initialDiagnoses[passId] = {
+        symptom: diagnosis.symptom,
+        cause: diagnosis.cause
+      };
+    });
+    setDiagnosisInputs(initialDiagnoses);
+  }, [passDiagnoses]);
+
   const handleNoteChange = (passId: string, value: string) => {
     setNoteInputs(prev => ({
       ...prev,
@@ -386,57 +406,98 @@ const AppInterface: React.FC<AppViewProps> = ({
     }));
 
     // Clear success state when editing
-    if (noteSuccess.has(passId)) {
-      const newSuccess = new Set(noteSuccess);
+    if (metadataSuccess.has(passId)) {
+      const newSuccess = new Set(metadataSuccess);
       newSuccess.delete(passId);
-      setNoteSuccess(newSuccess);
+      setMetadataSuccess(newSuccess);
     }
   };
 
-  const saveNote = async (passId: string) => {
+  const handleDiagnosisChange = (passId: string, field: 'symptom' | 'cause', value: string) => {
+    setDiagnosisInputs(prev => ({
+      ...prev,
+      [passId]: {
+        ...prev[passId],
+        [field]: value || undefined
+      }
+    }));
+
+    // Clear success state when editing
+    if (metadataSuccess.has(passId)) {
+      const newSuccess = new Set(metadataSuccess);
+      newSuccess.delete(passId);
+      setMetadataSuccess(newSuccess);
+    }
+  };
+
+  const savePassMetadata = async (passId: string, isFailedPass: boolean) => {
     if (!viamClient || !passId || !partId) return;
 
     const noteText = noteInputs[passId]?.trim() || '';
+    const diagnosisData = diagnosisInputs[passId] || {};
+    const { symptom, cause } = diagnosisData;
 
     // Show saving indicator
-    setSavingNotes(prev => new Set(prev).add(passId));
+    setSavingMetadata(prev => new Set(prev).add(passId));
 
     try {
-      const notesManager = createNotesManager(viamClient, machineId);
-      await notesManager.savePassNote(passId, noteText);
+      const metadataManager = getPassMetadataManager(viamClient, machineId);
+      
+      // Save note
+      await metadataManager.savePassNote(passId, noteText);
+      
+      // Save diagnosis only for failed passes
+      if (isFailedPass) {
+        await metadataManager.savePassDiagnosis(passId, symptom, cause);
+      }
 
-      // Create new note object
+      // Update notes in state
       const newNote: PassNote = {
         pass_id: passId,
         note_text: noteText,
         created_at: new Date().toISOString(),
         created_by: "summary-web-app"
       };
-
-      // Update notes in state
       onNotesUpdate(prevNotes => {
         const newNotesMap = new Map(prevNotes);
-        const updatedNotes = [newNote];
-        newNotesMap.set(passId, updatedNotes);
+        newNotesMap.set(passId, [newNote]);
         return newNotesMap;
       });
 
+      // Update diagnoses in state (only for failed passes)
+      if (isFailedPass) {
+        onDiagnosesUpdate(prevDiagnoses => {
+          const newDiagnosesMap = new Map(prevDiagnoses);
+          if (symptom || cause) {
+            newDiagnosesMap.set(passId, {
+              pass_id: passId,
+              symptom: symptom as PassDiagnosis['symptom'],
+              cause: cause as PassDiagnosis['cause'],
+              updated_at: new Date().toISOString(),
+              updated_by: "summary-web-app"
+            });
+          } else {
+            newDiagnosesMap.delete(passId);
+          }
+          return newDiagnosesMap;
+        });
+      }
+
       // Show success state
-      setNoteSuccess(prev => new Set(prev).add(passId));
+      setMetadataSuccess(prev => new Set(prev).add(passId));
 
       // Clear success state after a delay
       setTimeout(() => {
-        setNoteSuccess(prev => {
+        setMetadataSuccess(prev => {
           const newSuccess = new Set(prev);
           newSuccess.delete(passId);
           return newSuccess;
         });
       }, 2000);
     } catch (error) {
-      console.error("Failed to save note:", error);
+      console.error("Failed to save pass metadata:", error);
     } finally {
-      // Hide saving indicator
-      setSavingNotes(prev => {
+      setSavingMetadata(prev => {
         const newSaving = new Set(prev);
         newSaving.delete(passId);
         return newSaving;
@@ -679,61 +740,6 @@ const AppInterface: React.FC<AppViewProps> = ({
         </span>
       );
     }
-  };
-
-  const getSaveButtonStyles = (passId: string) => {
-    const isSaving = savingNotes.has(passId);
-    const isSuccess = noteSuccess.has(passId);
-    const noteText = noteInputs[passId] || '';
-    const existingNotes = passNotes.get(passId) || [];
-    const latestNoteText = existingNotes.length > 0 ? existingNotes[0].note_text : '';
-    const hasChanges = noteText.trim() !== latestNoteText.trim();
-
-    let backgroundColor = '#3b82f6'; // Default blue
-    let cursor = 'pointer';
-
-    if (isSuccess) {
-      backgroundColor = '#10b981'; // Success green
-      cursor = 'not-allowed';
-    } else if (isSaving) {
-      backgroundColor = '#9ca3af'; // Loading gray
-      cursor = 'not-allowed';
-    } else if (!hasChanges) {
-      backgroundColor = '#9ca3af'; // Disabled gray
-      cursor = 'not-allowed';
-    }
-
-    return {
-      padding: '6px 8px',
-      fontSize: '12px',
-      backgroundColor,
-      color: 'white',
-      border: 'none',
-      borderRadius: '4px',
-      cursor,
-      transition: 'background-color 0.2s'
-    };
-  };
-
-  const getSaveButtonText = (passId: string) => {
-    if (noteSuccess.has(passId)) return 'Saved!';
-    if (savingNotes.has(passId)) {
-      return (
-        <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-          <span style={{
-            display: 'inline-block',
-            width: '10px',
-            height: '10px',
-            border: '2px solid transparent',
-            borderTop: '2px solid white',
-            borderRadius: '50%',
-            animation: 'spin 1s linear infinite'
-          }} />
-          Saving...
-        </span>
-      );
-    }
-    return 'Save note';
   };
 
   const handleDownloadConfig = async (pass: Pass) => {
@@ -1009,18 +1015,27 @@ const AppInterface: React.FC<AppViewProps> = ({
                                           <path d="M19,21H8V7H19M19,5H8A2,2 0 0,0 6,7V21A2,2 0 0,0 8,23H19A2,2 0 0,0 21,21V7A2,2 0 0,0 19,5M16,1H4A2,2 0 0,0 2,3V17H4V3H16V1Z" />
                                         </svg>
                                       </button>
-                                      {passNotesData.length > 0 && passNotesData[0].note_text.trim() && (
-                                        <span
-                                          style={{
-                                            fontSize: '18px',
-                                            display: 'flex',
-                                            alignItems: 'center'
-                                          }}
-                                          title="This pass has notes"
-                                        >
-                                          📝
-                                        </span>
-                                      )}
+                                      {(() => {
+                                        const hasNotes = passNotesData.length > 0 && passNotesData[0].note_text.trim();
+                                        const diagnosisData = passDiagnoses.get(passId);
+                                        const hasDiagnosis = diagnosisData && (diagnosisData.symptom || diagnosisData.cause);
+                                        
+                                        if (hasNotes || hasDiagnosis) {
+                                          return (
+                                            <span
+                                              style={{
+                                                fontSize: '18px',
+                                                display: 'flex',
+                                                alignItems: 'center'
+                                              }}
+                                              title={hasNotes && hasDiagnosis ? "This pass has notes and diagnosis" : hasNotes ? "This pass has notes" : "This pass has diagnosis"}
+                                            >
+                                              📝
+                                            </span>
+                                          );
+                                        }
+                                        return null;
+                                      })()}
                                     </div>
                                   ) : (
                                     '—'
@@ -1429,86 +1444,222 @@ const AppInterface: React.FC<AppViewProps> = ({
                                           })}
                                         </div>
 
-                                        {/* Pass Notes Section - standalone above Files */}
-                                        <div style={{ margin: '0 12px', maxWidth: '50%' }}>
-                                          {fetchingNotes && passNotesData.length === 0 ? (
-                                            <div className="pass-notes-section">
-                                              <label className="flex pass-notes-label">
-                                                <h4>Pass notes</h4>
-                                              </label>
-                                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100px', backgroundColor: '#f9fafb', borderRadius: '6px' }}>
+                                        {/* Diagnosis and Notes Section - shows for all passes, diagnosis fields only for failed */}
+                                        <div style={{ margin: '1rem 12px 24px 12px' }}>
+                                          <div className="step-card" style={{ minWidth: '50%', backgroundColor: 'transparent' }}>
+                                            <div className="step-name" style={{ textAlign: 'left' }}>
+                                              {!pass.success ? 'Diagnosis' : 'Notes'}
+                                            </div>
+
+                                            {fetchingNotes ? (
+                                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '80px' }}>
                                                 <span style={{
                                                   display: 'inline-block',
-                                                  width: '24px',
-                                                  height: '24px',
-                                                  border: '3px solid rgba(59, 130, 246, 0.2)',
+                                                  width: '20px',
+                                                  height: '20px',
+                                                  border: '2px solid rgba(59, 130, 246, 0.2)',
                                                   borderTopColor: '#3b82f6',
                                                   borderRadius: '50%',
                                                   animation: 'spin 1s linear infinite'
                                                 }}></span>
-                                                <span style={{ marginLeft: '12px', color: '#6b7280' }}>Loading notes...</span>
+                                                <span style={{ marginLeft: '10px', color: '#6b7280', fontSize: '14px' }}>Loading...</span>
                                               </div>
-                                            </div>
-                                          ) : (
-                                            <div className="pass-notes-section">
-                                              <label htmlFor={`pass-notes-${passId}`} className="pass-notes-label">
-                                                <h4>Pass notes</h4>
-                                              </label>
+                                            ) : (
+                                              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                                                {/* Diagnosis dropdowns - only for failed passes, displayed in a row */}
+                                                {!pass.success && (
+                                                  <div style={{ display: 'flex', gap: '16px' }}>
+                                                    <div style={{ flex: 1 }}>
+                                                      <label htmlFor={`symptom-${passId}`} style={{ display: 'block', fontSize: '13px', fontWeight: 500, color: '#374151', marginBottom: '6px' }}>
+                                                        Symptom
+                                                      </label>
+                                                      <select
+                                                        id={`symptom-${passId}`}
+                                                        value={diagnosisInputs[passId]?.symptom || ''}
+                                                        onChange={(e) => handleDiagnosisChange(passId, 'symptom', e.target.value)}
+                                                        style={{
+                                                          width: '100%',
+                                                          padding: '10px 12px',
+                                                          fontSize: '14px',
+                                                          border: '1px solid #d1d5db',
+                                                          borderRadius: '6px',
+                                                          backgroundColor: '#ffffff',
+                                                          cursor: 'pointer',
+                                                          outline: 'none'
+                                                        }}
+                                                      >
+                                                        <option value="">Select symptom...</option>
+                                                        {SYMPTOM_OPTIONS.map(option => (
+                                                          <option key={option} value={option}>{option}</option>
+                                                        ))}
+                                                      </select>
+                                                    </div>
 
-                                              <textarea
-                                                id={`pass-notes-${passId}`}
-                                                className="notes-textarea"
-                                                value={noteInputs[passId] || ''}
-                                                onChange={(e) => handleNoteChange(passId, e.target.value)}
-                                                placeholder="Add a note for this pass..."
-                                                style={{
-                                                  width: '100%',
-                                                  minHeight: '80px',
-                                                  maxHeight: '200px',
-                                                  padding: '12px',
-                                                  fontSize: '14px',
-                                                  border: '1px solid #e5e7eb',
-                                                  borderRadius: '3px',
-                                                  resize: 'vertical',
-                                                  fontFamily: 'inherit',
-                                                  backgroundColor: '#ffffff',
-                                                  boxSizing: 'border-box'
-                                                }}
-                                                aria-label={`Notes for pass ${passId}`}
-                                                aria-describedby={`pass-notes-help-${passId}`}
-                                              />
-                                              <div style={{
-                                                display: 'flex',
-                                                justifyContent: 'flex-end',
-                                                marginTop: '4px'
-                                              }}>
-                                                <button
-                                                  type="button"
-                                                  onClick={() => saveNote(passId)}
-                                                  disabled={
-                                                    savingNotes.has(passId) ||
-                                                    noteSuccess.has(passId) ||
-                                                    (passNotesData.length > 0
-                                                      ? passNotesData[0].note_text === (noteInputs[passId] || '').trim()
-                                                      : !(noteInputs[passId] || '').trim())
-                                                  }
-                                                  style={getSaveButtonStyles(passId)}
-                                                  onMouseEnter={(e) => {
-                                                    if (!savingNotes.has(passId) && !noteSuccess.has(passId)) {
-                                                      e.currentTarget.style.backgroundColor = '#2563eb';
-                                                    }
-                                                  }}
-                                                  onMouseLeave={(e) => {
-                                                    if (!savingNotes.has(passId) && !noteSuccess.has(passId)) {
-                                                      e.currentTarget.style.backgroundColor = getSaveButtonStyles(passId).backgroundColor;
-                                                    }
-                                                  }}
-                                                >
-                                                  {getSaveButtonText(passId)}
-                                                </button>
+                                                    <div style={{ flex: 1 }}>
+                                                      <label htmlFor={`cause-${passId}`} style={{ display: 'block', fontSize: '13px', fontWeight: 500, color: '#374151', marginBottom: '6px' }}>
+                                                        Cause
+                                                      </label>
+                                                      <select
+                                                        id={`cause-${passId}`}
+                                                        value={diagnosisInputs[passId]?.cause || ''}
+                                                        onChange={(e) => handleDiagnosisChange(passId, 'cause', e.target.value)}
+                                                        style={{
+                                                          width: '100%',
+                                                          padding: '10px 12px',
+                                                          fontSize: '14px',
+                                                          border: '1px solid #d1d5db',
+                                                          borderRadius: '6px',
+                                                          backgroundColor: '#ffffff',
+                                                          cursor: 'pointer',
+                                                          outline: 'none'
+                                                        }}
+                                                      >
+                                                        <option value="">Select cause...</option>
+                                                        {CAUSE_OPTIONS.map(option => (
+                                                          <option key={option} value={option}>{option}</option>
+                                                        ))}
+                                                      </select>
+                                                    </div>
+                                                  </div>
+                                                )}
+
+                                                {/* Notes textarea - always shown */}
+                                                <div>
+                                                  {/* Only show label when there are diagnosis fields above */}
+                                                  {!pass.success && (
+                                                    <label htmlFor={`pass-notes-${passId}`} style={{ display: 'block', fontSize: '13px', fontWeight: 500, color: '#374151', marginBottom: '6px' }}>
+                                                      Notes
+                                                    </label>
+                                                  )}
+                                                  <textarea
+                                                    id={`pass-notes-${passId}`}
+                                                    value={noteInputs[passId] || ''}
+                                                    onChange={(e) => handleNoteChange(passId, e.target.value)}
+                                                    placeholder="Add a note for this pass..."
+                                                    style={{
+                                                      width: '100%',
+                                                      minHeight: '72px',
+                                                      padding: '10px 12px',
+                                                      fontSize: '14px',
+                                                      border: '1px solid #d1d5db',
+                                                      borderRadius: '6px',
+                                                      resize: 'vertical',
+                                                      fontFamily: 'inherit',
+                                                      backgroundColor: '#ffffff',
+                                                      boxSizing: 'border-box',
+                                                      outline: 'none',
+                                                      lineHeight: '1.5'
+                                                    }}
+                                                    aria-label={`Notes for pass ${passId}`}
+                                                  />
+                                                </div>
+
+                                                {/* Save button - full width at bottom */}
+                                                <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                                                  <button
+                                                    type="button"
+                                                    onClick={() => savePassMetadata(passId, !pass.success)}
+                                                    disabled={(() => {
+                                                      if (savingMetadata.has(passId) || metadataSuccess.has(passId)) return true;
+                                                      const noteText = noteInputs[passId] || '';
+                                                      const existingNoteText = passNotesData.length > 0 ? passNotesData[0].note_text : '';
+                                                      const noteChanged = noteText.trim() !== existingNoteText.trim();
+                                                      if (!pass.success) {
+                                                        const diagnosisChanged = 
+                                                          (passDiagnoses.get(passId)?.symptom || '') !== (diagnosisInputs[passId]?.symptom || '') ||
+                                                          (passDiagnoses.get(passId)?.cause || '') !== (diagnosisInputs[passId]?.cause || '');
+                                                        return !noteChanged && !diagnosisChanged;
+                                                      }
+                                                      return !noteChanged;
+                                                    })()}
+                                                    style={{
+                                                      padding: '6px 8px',
+                                                      fontSize: '12px',
+                                                      color: 'white',
+                                                      backgroundColor: metadataSuccess.has(passId) ? '#10b981' : (() => {
+                                                        if (savingMetadata.has(passId)) return '#9ca3af';
+                                                        const noteText = noteInputs[passId] || '';
+                                                        const existingNoteText = passNotesData.length > 0 ? passNotesData[0].note_text : '';
+                                                        const noteChanged = noteText.trim() !== existingNoteText.trim();
+                                                        if (!pass.success) {
+                                                          const diagnosisChanged = 
+                                                            (passDiagnoses.get(passId)?.symptom || '') !== (diagnosisInputs[passId]?.symptom || '') ||
+                                                            (passDiagnoses.get(passId)?.cause || '') !== (diagnosisInputs[passId]?.cause || '');
+                                                          return noteChanged || diagnosisChanged ? '#3b82f6' : '#9ca3af';
+                                                        }
+                                                        return noteChanged ? '#3b82f6' : '#9ca3af';
+                                                      })(),
+                                                      border: 'none',
+                                                      borderRadius: '4px',
+                                                      cursor: (() => {
+                                                        if (savingMetadata.has(passId) || metadataSuccess.has(passId)) return 'not-allowed';
+                                                        const noteText = noteInputs[passId] || '';
+                                                        const existingNoteText = passNotesData.length > 0 ? passNotesData[0].note_text : '';
+                                                        const noteChanged = noteText.trim() !== existingNoteText.trim();
+                                                        if (!pass.success) {
+                                                          const diagnosisChanged = 
+                                                            (passDiagnoses.get(passId)?.symptom || '') !== (diagnosisInputs[passId]?.symptom || '') ||
+                                                            (passDiagnoses.get(passId)?.cause || '') !== (diagnosisInputs[passId]?.cause || '');
+                                                          return noteChanged || diagnosisChanged ? 'pointer' : 'not-allowed';
+                                                        }
+                                                        return noteChanged ? 'pointer' : 'not-allowed';
+                                                      })(),
+                                                      transition: 'background-color 0.2s',
+                                                      display: 'flex',
+                                                      alignItems: 'center',
+                                                      gap: '6px'
+                                                    }}
+                                                    onMouseEnter={(e) => {
+                                                      const noteText = noteInputs[passId] || '';
+                                                      const existingNoteText = passNotesData.length > 0 ? passNotesData[0].note_text : '';
+                                                      const noteChanged = noteText.trim() !== existingNoteText.trim();
+                                                      let hasChanges = noteChanged;
+                                                      if (!pass.success) {
+                                                        const diagnosisChanged = 
+                                                          (passDiagnoses.get(passId)?.symptom || '') !== (diagnosisInputs[passId]?.symptom || '') ||
+                                                          (passDiagnoses.get(passId)?.cause || '') !== (diagnosisInputs[passId]?.cause || '');
+                                                        hasChanges = noteChanged || diagnosisChanged;
+                                                      }
+                                                      if (hasChanges && !savingMetadata.has(passId) && !metadataSuccess.has(passId)) {
+                                                        e.currentTarget.style.backgroundColor = '#2563eb';
+                                                      }
+                                                    }}
+                                                    onMouseLeave={(e) => {
+                                                      const noteText = noteInputs[passId] || '';
+                                                      const existingNoteText = passNotesData.length > 0 ? passNotesData[0].note_text : '';
+                                                      const noteChanged = noteText.trim() !== existingNoteText.trim();
+                                                      let hasChanges = noteChanged;
+                                                      if (!pass.success) {
+                                                        const diagnosisChanged = 
+                                                          (passDiagnoses.get(passId)?.symptom || '') !== (diagnosisInputs[passId]?.symptom || '') ||
+                                                          (passDiagnoses.get(passId)?.cause || '') !== (diagnosisInputs[passId]?.cause || '');
+                                                        hasChanges = noteChanged || diagnosisChanged;
+                                                      }
+                                                      if (hasChanges && !savingMetadata.has(passId) && !metadataSuccess.has(passId)) {
+                                                        e.currentTarget.style.backgroundColor = '#3b82f6';
+                                                      }
+                                                    }}
+                                                  >
+                                                    {savingMetadata.has(passId) ? (
+                                                      <>
+                                                        <div
+                                                          style={{
+                                                            width: '12px',
+                                                            height: '12px',
+                                                            border: '2px solid #ffffff',
+                                                            borderTop: '2px solid transparent',
+                                                            borderRadius: '50%',
+                                                            animation: 'spin 1s linear infinite'
+                                                          }}
+                                                        />
+                                                        Saving...
+                                                      </>
+                                                    ) : metadataSuccess.has(passId) ? '✓ Saved' : 'Save'}
+                                                  </button>
+                                                </div>
                                               </div>
-                                            </div>
-                                          )}
+                                            )}
+                                          </div>
                                         </div>
 
                                         {/* Parent container for Files and Notes columns */}
