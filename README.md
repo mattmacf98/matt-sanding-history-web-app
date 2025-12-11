@@ -35,6 +35,7 @@ A basic React TypeScript application with minimal dependencies that displays a l
 
 ## Project Structure
 
+- `src/Root.tsx` - Root component that handles routes
 - `src/App.tsx` - Main application component
 - `src/components/StringList.tsx` - Component that renders a list of strings
 - `src/index.tsx` - Application entry point
