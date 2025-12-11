@@ -12,7 +12,7 @@ import {
 } from './lib/videoUtils';
 import { getBeforeAfterImages, getStepVideos } from './lib/passUtils';
 import { formatDurationMs } from './lib/uiUtils';
-import { createPassMetadataManager } from './lib/passMetadataManager';
+import { getPassMetadataManager } from './lib/passMetadataManager';
 import {
   getRobotConfigAtTime,
   downloadRobotConfig,
@@ -441,7 +441,7 @@ const AppInterface: React.FC<AppViewProps> = ({
     setSavingMetadata(prev => new Set(prev).add(passId));
 
     try {
-      const metadataManager = createPassMetadataManager(viamClient, machineId);
+      const metadataManager = getPassMetadataManager(viamClient, machineId);
       
       // Save note
       await metadataManager.savePassNote(passId, noteText);

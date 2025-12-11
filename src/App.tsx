@@ -5,7 +5,7 @@ import Cookies from "js-cookie";
 import { JsonValue } from '@viamrobotics/sdk';
 import { Pass, PassNote, PassDiagnosis } from './types';
 import { Timestamp } from '@bufbuild/protobuf';
-import { createPassMetadataManager } from './lib/passMetadataManager';
+import { getPassMetadataManager } from './lib/passMetadataManager';
 
 const sandingSummaryName = "sanding-summary";
 const sandingSummaryComponentType = "rdk:component:sensor";
@@ -285,7 +285,7 @@ function App() {
 
         setFetchingNotes(true);
 
-        const metadataManager = createPassMetadataManager(viamClient, machineId);
+        const metadataManager = getPassMetadataManager(viamClient, machineId);
         const [fetchedNotes, fetchedDiagnoses] = await Promise.all([
           metadataManager.fetchNotesForPasses(passIds),
           metadataManager.fetchDiagnosesForPasses(passIds)

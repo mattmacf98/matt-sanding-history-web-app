@@ -4,6 +4,9 @@ import { PassNote, PassDiagnosis } from '../types';
 const NOTE_PREFIX = 'note-';
 const DIAGNOSIS_PREFIX = 'diagnosis-';
 
+// Singleton instance cache - keyed by machineId
+const managerInstances = new Map<string, PassMetadataManager>();
+
 export class PassMetadataManager {
   private viamClient: VIAM.ViamClient;
   private machineId: string;
@@ -297,6 +300,17 @@ export class PassMetadataManager {
   }
 }
 
-export function createPassMetadataManager(viamClient: VIAM.ViamClient, machineId: string): PassMetadataManager {
-  return new PassMetadataManager(viamClient, machineId);
+/**
+ * Get or create a PassMetadataManager instance for a machine
+ * Uses singleton pattern to preserve cache across calls
+ */
+export function getPassMetadataManager(viamClient: VIAM.ViamClient, machineId: string): PassMetadataManager {
+  let manager = managerInstances.get(machineId);
+  
+  if (!manager) {
+    manager = new PassMetadataManager(viamClient, machineId);
+    managerInstances.set(machineId, manager);
+  }
+  
+  return manager;
 }
