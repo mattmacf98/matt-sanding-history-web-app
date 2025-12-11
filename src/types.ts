@@ -33,13 +33,9 @@ export interface PassNote {
 export const SYMPTOM_OPTIONS = [
   'P-Stop',
   'User Cancelled',
-  'Motion Planning Failed',
-  'Camera/Sensor Issue',
-  'Arm Connection Lost',
-  'Collision Detected',
   'Joint Out of Bounds',
   'Mesh Generation Failed',
-  'E-Stop Triggered',
+  'E-Stop',
   'System Error',
   'Other',
 ] as const;
