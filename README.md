@@ -46,6 +46,10 @@ A basic React TypeScript application with minimal dependencies that displays a l
 
 - React 18.2.0
 - React DOM 18.2.0
+- React Router DOM 7.10.1
+- @viamrobotics/sdk 0.57.0
+- js-cookie 3.0.5
 - Vite 4.4.0
 - TypeScript 5.0.0
-- Type definitions for React and React DOM
+- @vitejs/plugin-react 4.0.0
+- Type definitions for React, React DOM, React Router DOM, and js-cookie
