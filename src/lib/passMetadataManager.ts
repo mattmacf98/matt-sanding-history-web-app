@@ -1,4 +1,5 @@
 import * as VIAM from "@viamrobotics/sdk";
+import type { JsonValue } from '@bufbuild/protobuf';
 import { PassNote, PassDiagnosis } from '../types';
 
 const NOTE_PREFIX = 'note-';
@@ -10,6 +11,7 @@ const managerInstances = new Map<string, PassMetadataManager>();
 export class PassMetadataManager {
   private viamClient: VIAM.ViamClient;
   private machineId: string;
+  private cachedMetadata: Record<string, JsonValue> | null = null;
   private cachedNotes: Map<string, PassNote> | null = null;
   private cachedDiagnoses: Map<string, PassDiagnosis> | null = null;
 
@@ -45,13 +47,23 @@ export class PassMetadataManager {
   }
 
   /**
+   * Get metadata from cache or fetch from API
+   */
+  private async getMetadata(): Promise<Record<string, JsonValue>> {
+    if (this.cachedMetadata === null) {
+      this.cachedMetadata = await this.viamClient.appClient.getRobotMetadata(this.machineId);
+    }
+    return this.cachedMetadata;
+  }
+
+  /**
    * Generic helper to update metadata with merge
    * Fetches current metadata, applies changes, and saves back
    */
   private async updateMetadata(
-    updateFn: (metadata: Record<string, unknown>) => void
+    updateFn: (metadata: Record<string, JsonValue>) => void
   ): Promise<void> {
-    const currentMetadata = await this.viamClient.appClient.getRobotMetadata(this.machineId);
+    const currentMetadata = await this.getMetadata();
     updateFn(currentMetadata);
     await this.viamClient.appClient.updateRobotMetadata(this.machineId, currentMetadata);
   }
@@ -65,7 +77,7 @@ export class PassMetadataManager {
       return this.cachedNotes;
     }
 
-    const metadata = await this.viamClient.appClient.getRobotMetadata(this.machineId);
+    const metadata = await this.getMetadata();
     this.cachedNotes = this.parseMetadataByPrefix<PassNote>(metadata, NOTE_PREFIX, 'note');
 
     return this.cachedNotes;
@@ -80,7 +92,7 @@ export class PassMetadataManager {
       return this.cachedDiagnoses;
     }
 
-    const metadata = await this.viamClient.appClient.getRobotMetadata(this.machineId);
+    const metadata = await this.getMetadata();
     this.cachedDiagnoses = this.parseMetadataByPrefix<PassDiagnosis>(metadata, DIAGNOSIS_PREFIX, 'diagnosis');
 
     // Log all loaded diagnoses
