@@ -38,6 +38,7 @@ function VideoDetailPage() {
   return (
     <div style={{ padding: '20px', width: '100%', height: '100%' }}>
       <a href={`/machine/${machineInfo}`} className="text-blue-500">Go to sanding history</a>
+
       <h2 className="font-semibold text-zinc-900">Sanding video</h2>
       <p><span className="font-semibold text-zinc-900">Location:</span> {locationId}</p>
       <p><span className="font-semibold text-zinc-900">Machine:</span> {machineName}</p>
@@ -48,6 +49,7 @@ function VideoDetailPage() {
 
       {loading && <p>Loading video...</p>}
       {error && <p style={{ color: '#dc2626' }}>Error: {error}</p>}
+
       {signedUrl && !loading && !error && (
         <video
           src={signedUrl}
