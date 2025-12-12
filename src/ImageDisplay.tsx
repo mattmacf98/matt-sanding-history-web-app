@@ -1,21 +1,23 @@
 import React, { useState, useEffect } from 'react';
 import * as VIAM from "@viamrobotics/sdk";
 
+import { useViamClient } from './ViamClientContext';
+
 interface ImageDisplayProps {
   binaryData: VIAM.dataApi.BinaryData;
-  viamClient: VIAM.ViamClient;
   className?: string;
   style?: React.CSSProperties;
   alt?: string;
 }
 
 const ImageDisplay: React.FC<ImageDisplayProps> = ({ 
-  binaryData, 
-  viamClient, 
+  binaryData,
   className,
   style,
   alt = "Pass capture"
 }) => {
+  const { viamClient } = useViamClient();
+
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);

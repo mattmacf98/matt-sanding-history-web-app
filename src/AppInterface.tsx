@@ -1,5 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import * as VIAM from "@viamrobotics/sdk";
+
+import { useViamClient } from './ViamClientContext';
 import './AppInterface.css';
 import StepVideosGrid from './StepVideosGrid';
 import VideoStoreSelector from './VideoStoreSelector';
@@ -35,7 +37,6 @@ interface PassFilesProps {
 const PassFiles: React.FC<PassFilesProps> = ({
   pass,
   files,
-  viamClient,
   fetchTimestamp,
   expandedFiles,
   toggleFilesExpansion,
@@ -43,6 +44,7 @@ const PassFiles: React.FC<PassFilesProps> = ({
   handleFileSearchChange,
   debouncedFileSearchInputs,
 }) => {
+  const { viamClient } = useViamClient();
   const passId = pass.pass_id;
 
   const handleDownload = async (file: VIAM.dataApi.BinaryData) => {
@@ -296,8 +298,6 @@ interface AppViewProps {
   files: Map<string, VIAM.dataApi.BinaryData>;
   videoFiles: Map<string, VIAM.dataApi.BinaryData>;
   imageFiles: Map<string, VIAM.dataApi.BinaryData>;
-  viamClient: VIAM.ViamClient;
-  robotClient?: VIAM.RobotClient | null;
   fetchVideos: (start: Date) => Promise<void>;
   machineName: string | null;
   fetchTimestamp: Date | null;
@@ -322,12 +322,10 @@ interface AppViewProps {
 
 const AppInterface: React.FC<AppViewProps> = ({
   machineName,
-  viamClient,
   passSummaries = [],
   files,
   videoFiles,
   imageFiles,
-  robotClient,
   fetchVideos,
   fetchTimestamp,
   machineId,
@@ -339,6 +337,8 @@ const AppInterface: React.FC<AppViewProps> = ({
   fetchingNotes,
   pagination,
 }) => {
+  const { robotClient, viamClient } = useViamClient();
+
   const [activeRoute, setActiveRoute] = useState('live');
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
   const [videoStoreClient, setVideoStoreClient] = useState<VIAM.GenericComponentClient | null>(null);
@@ -431,7 +431,7 @@ const AppInterface: React.FC<AppViewProps> = ({
   };
 
   const savePassMetadata = async (passId: string, isFailedPass: boolean) => {
-    if (!viamClient || !passId || !partId) return;
+    if (!passId || !partId) return;
 
     const noteText = noteInputs[passId]?.trim() || '';
     const diagnosisData = diagnosisInputs[passId] || {};
@@ -667,7 +667,7 @@ const AppInterface: React.FC<AppViewProps> = ({
   };
 
   const fetchConfigMetadata = async (pass: Pass, prevPass: Pass | null) => {
-    if (!viamClient || !partId) return;
+    if (!partId) return;
 
     const passId = pass.pass_id;
     const prevPassId = prevPass?.pass_id;
@@ -743,7 +743,7 @@ const AppInterface: React.FC<AppViewProps> = ({
   };
 
   const handleDownloadConfig = async (pass: Pass) => {
-    if (!viamClient || !partId) {
+    if (!partId) {
       alert('Unable to download config: missing required information');
       return;
     }
@@ -824,10 +824,7 @@ const AppInterface: React.FC<AppViewProps> = ({
                 </div>
               )}
 
-              <VideoStoreSelector
-                robotClient={robotClient || null}
-                onVideoStoreSelected={setVideoStoreClient}
-              />
+              <VideoStoreSelector onVideoStoreSelected={setVideoStoreClient} />
 
               <div className="video-store-selector">
                 <label htmlFor="camera-select" className="video-store-selector-label">
@@ -1378,7 +1375,7 @@ const AppInterface: React.FC<AppViewProps> = ({
                                                       style={{ marginTop: "12px", width: "100%", overflow: "hidden" }}
                                                       onClick={() => openBeforeAfterModal(beforeImage, afterImage)}
                                                     >
-                                                      <ImageDisplay binaryData={beforeImage} viamClient={viamClient} />
+                                                      <ImageDisplay binaryData={beforeImage} />
                                                     </div>
                                                   </div>
                                                 )}
@@ -1402,7 +1399,7 @@ const AppInterface: React.FC<AppViewProps> = ({
                                                       style={{ marginTop: "12px", width: "100%", overflow: "hidden" }}
                                                       onClick={() => openBeforeAfterModal(beforeImage, afterImage)}
                                                     >
-                                                      <ImageDisplay binaryData={afterImage} viamClient={viamClient} />
+                                                      <ImageDisplay binaryData={afterImage} />
                                                     </div>
                                                   </div>
                                                 )}
@@ -1770,7 +1767,6 @@ const AppInterface: React.FC<AppViewProps> = ({
           beforeImage={beforeAfterModal.beforeImage}
           afterImage={beforeAfterModal.afterImage}
           onClose={closeBeforeAfterModal}
-          viamClient={viamClient}
         />
       )}
 

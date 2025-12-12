@@ -6,14 +6,12 @@ interface BeforeAfterModalProps {
   beforeImage: VIAM.dataApi.BinaryData | null;
   afterImage: VIAM.dataApi.BinaryData | null;
   onClose: () => void;
-  viamClient: VIAM.ViamClient;
 }
 
 const BeforeAfterModal: React.FC<BeforeAfterModalProps> = ({
   beforeImage,
   afterImage,
   onClose,
-  viamClient
 }) => {
   const handleEscapeKey = (event: KeyboardEvent) => {
     if (event.key === 'Escape') {
@@ -50,8 +48,7 @@ const BeforeAfterModal: React.FC<BeforeAfterModalProps> = ({
               {beforeImage ? (
                 <div className="before-after-image-container">
                   <ImageDisplay 
-                    binaryData={beforeImage} 
-                    viamClient={viamClient}
+                    binaryData={beforeImage}
                     className="before-after-image"
                     alt="Before image"
                   />
@@ -73,8 +70,7 @@ const BeforeAfterModal: React.FC<BeforeAfterModalProps> = ({
               {afterImage ? (
                 <div className="before-after-image-container">
                   <ImageDisplay 
-                    binaryData={afterImage} 
-                    viamClient={viamClient}
+                    binaryData={afterImage}
                     className="before-after-image"
                     alt="After image"
                   />

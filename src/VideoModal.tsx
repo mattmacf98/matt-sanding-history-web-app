@@ -1,19 +1,21 @@
 import React, { useState, useEffect } from 'react';
 import * as VIAM from "@viamrobotics/sdk";
+
 import { extractCameraName } from './lib/videoUtils';
 import { createVideoStreamFromBase64 } from './lib/videoUtils';
+import { useViamClient } from './ViamClientContext';
 
 interface VideoModalProps {
   selectedVideo: VIAM.dataApi.BinaryData | null;
   onClose: () => void;
-  viamClient: VIAM.ViamClient;
 }
 
 const VideoModal: React.FC<VideoModalProps> = ({ 
   selectedVideo, 
-  onClose, 
-  viamClient
+  onClose,
 }) => {
+  const { viamClient } = useViamClient();
+
   const [modalVideoUrl, setModalVideoUrl] = useState<string | null>(null);
   const [loadingModalVideo, setLoadingModalVideo] = useState(false);
 
@@ -74,7 +76,7 @@ const VideoModal: React.FC<VideoModalProps> = ({
 
   // Fetch video when selectedVideo changes
   useEffect(() => {
-    if (selectedVideo) {
+    if (selectedVideo && viamClient) {
       const fetchVideo = async () => {
         setLoadingModalVideo(true);
         try {
