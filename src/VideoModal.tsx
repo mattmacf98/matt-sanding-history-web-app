@@ -1,17 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import * as VIAM from "@viamrobotics/sdk";
 
+import { useViamClients } from './ViamClientContext';
+
 interface VideoModalProps {
   selectedVideo: VIAM.dataApi.BinaryData | null;
   onClose: () => void;
-  viamClient: VIAM.ViamClient;
 }
 
 const VideoModal: React.FC<VideoModalProps> = ({ 
   selectedVideo, 
-  onClose, 
-  viamClient
+  onClose,
 }) => {
+  const { viamClient } = useViamClients();
+
   const [modalVideoUrl, setModalVideoUrl] = useState<string | null>(null);
   const [loadingModalVideo, setLoadingModalVideo] = useState(false);
 
