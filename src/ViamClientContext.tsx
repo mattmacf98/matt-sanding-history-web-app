@@ -61,7 +61,6 @@ export function ViamClientProvider({ children }: { children: ReactNode }) {
 
     const locationIdMatch = window.location.pathname.match(locationIdRegex);
     if (!locationIdMatch) {
-      console.error("Could not parse location ID from URL");
       errors.push("Could not parse location ID from URL");
     } else {
       locationId = locationIdMatch[1];
@@ -137,7 +136,6 @@ export function ViamClientProvider({ children }: { children: ReactNode }) {
         viamClient = await connect(urlAndCookieData.apiKeyId!, urlAndCookieData.apiKeySecret!);
         setViamClient(viamClient);
       } catch (error) {
-        console.error('Failed to create viam client:', error);
         setInitializationErrors((prev) =>
           [...prev, `Failed to create viam client: ${error instanceof Error ? error.message : String(error)}`]
         );
@@ -152,7 +150,6 @@ export function ViamClientProvider({ children }: { children: ReactNode }) {
 
         setOrganizationId(organizations[0].id);
       } catch (error) {
-        console.error('Failed to fetch organizations:', error);
         setInitializationErrors((prev) =>
           [...prev, `Failed to get organization ID: ${error instanceof Error ? error.message : String(error)}`]
         );
