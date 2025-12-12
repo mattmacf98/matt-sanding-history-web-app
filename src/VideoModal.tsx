@@ -3,7 +3,7 @@ import * as VIAM from "@viamrobotics/sdk";
 
 import { extractCameraName } from './lib/videoUtils';
 import { createVideoStreamFromBase64 } from './lib/videoUtils';
-import { useViamClient } from './ViamClientContext';
+import { useViamClients } from './ViamClientContext';
 
 interface VideoModalProps {
   selectedVideo: VIAM.dataApi.BinaryData | null;
@@ -14,7 +14,7 @@ const VideoModal: React.FC<VideoModalProps> = ({
   selectedVideo, 
   onClose,
 }) => {
-  const { viamClient } = useViamClient();
+  const { viamClient } = useViamClients();
 
   const [modalVideoUrl, setModalVideoUrl] = useState<string | null>(null);
   const [loadingModalVideo, setLoadingModalVideo] = useState(false);

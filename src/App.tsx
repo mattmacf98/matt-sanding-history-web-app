@@ -6,14 +6,14 @@ import { Pass, PassNote, PassDiagnosis } from './types';
 import { Timestamp } from '@bufbuild/protobuf';
 
 import { getPassMetadataManager } from './lib/passMetadataManager';
-import { useViamClient } from './ViamClientContext';
+import { useViamClients } from './ViamClientContext';
 
 const sandingSummaryName = "sanding-summary";
 const sandingSummaryComponentType = "rdk:component:sensor";
 const BATCH_SIZE = 100;
 
 function App() {
-  const { locationId, machineId, machineName, organizationId, viamClient } = useViamClient();
+  const { locationId, machineId, machineName, organizationId, viamClient } = useViamClients();
 
   const [passSummaries, setPassSummaries] = useState<Pass[]>([]);
   const [files, setFiles] = useState<Map<string, VIAM.dataApi.BinaryData>>(new Map());

@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import * as VIAM from "@viamrobotics/sdk";
 
-import { useViamClient } from './ViamClientContext';
+import { useViamClients } from './ViamClientContext';
 import './AppInterface.css';
 import StepVideosGrid from './StepVideosGrid';
 import VideoStoreSelector from './VideoStoreSelector';
@@ -44,7 +44,7 @@ const PassFiles: React.FC<PassFilesProps> = ({
   handleFileSearchChange,
   debouncedFileSearchInputs,
 }) => {
-  const { viamClient } = useViamClient();
+  const { viamClient } = useViamClients();
 
   const passId = pass.pass_id;
 
@@ -338,7 +338,7 @@ const AppInterface: React.FC<AppViewProps> = ({
   fetchingNotes,
   pagination,
 }) => {
-  const { robotClient, viamClient } = useViamClient();
+  const { robotClient, viamClient } = useViamClients();
 
   const [activeRoute, setActiveRoute] = useState('live');
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import * as VIAM from "@viamrobotics/sdk";
 
-import { useViamClient } from './ViamClientContext';
+import { useViamClients } from './ViamClientContext';
 
 const STORAGE_KEY = 'selectedVideoStore';
 
@@ -17,7 +17,7 @@ interface Resource {
 }
 
 const VideoStoreSelector: React.FC<VideoStoreSelectorProps> = ({ onVideoStoreSelected }) => {
-  const { robotClient } = useViamClient();
+  const { robotClient } = useViamClients();
 
   const [resources, setResources] = useState<Resource[]>([]);
   const [selectedResource, setSelectedResource] = useState<string>(() => {
