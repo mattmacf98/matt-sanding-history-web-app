@@ -162,7 +162,7 @@ const VideoModal: React.FC<VideoModalProps> = ({
                 {videoShared ? 'Link copied!' : 'Share link'}
               </button>
               <button
-                title="Share link from the current location within the video"
+                title="Share link to the video's detail page from the current location within the video"
                 className="video-modal-button secondary"
                 style={{
                   width: '190px'
