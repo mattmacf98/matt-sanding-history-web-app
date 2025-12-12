@@ -361,6 +361,7 @@ const AppInterface: React.FC<AppViewProps> = ({
 
   // Diagnosis UI state
   const [diagnosisInputs, setDiagnosisInputs] = useState<Record<string, { symptom?: string; cause?: string; jiraTicketUrl?: string }>>({});
+  const [jiraValidationErrors, setJiraValidationErrors] = useState<Record<string, string>>({});
   // Combined saving state for notes + diagnosis
   const [savingMetadata, setSavingMetadata] = useState<Set<string>>(new Set());
   const [metadataSuccess, setMetadataSuccess] = useState<Set<string>>(new Set());
@@ -422,6 +423,48 @@ const AppInterface: React.FC<AppViewProps> = ({
         [field]: value || undefined
       }
     }));
+
+    // Validate JIRA URL format
+    if (field === 'jiraTicketUrl') {
+      const trimmedValue = value.trim();
+      if (trimmedValue === '') {
+        // Empty is valid (field is optional)
+        setJiraValidationErrors(prev => {
+          const newErrors = { ...prev };
+          delete newErrors[passId];
+          return newErrors;
+        });
+      } else {
+        // Validate URL format
+        try {
+          const url = new URL(trimmedValue);
+          // Check if it's a Viam JIRA URL
+          if (url.hostname !== 'viam.atlassian.net') {
+            setJiraValidationErrors(prev => ({
+              ...prev,
+              [passId]: 'JIRA URL must be from viam.atlassian.net'
+            }));
+          } else if (!url.pathname.startsWith('/browse/')) {
+            setJiraValidationErrors(prev => ({
+              ...prev,
+              [passId]: 'JIRA URL must follow format: https://viam.atlassian.net/browse/PROJECT-123'
+            }));
+          } else {
+            // Valid JIRA URL
+            setJiraValidationErrors(prev => {
+              const newErrors = { ...prev };
+              delete newErrors[passId];
+              return newErrors;
+            });
+          }
+        } catch (e) {
+          setJiraValidationErrors(prev => ({
+            ...prev,
+            [passId]: 'Please enter a valid URL'
+          }));
+        }
+      }
+    }
 
     // Clear success state when editing
     if (metadataSuccess.has(passId)) {
@@ -1548,7 +1591,7 @@ const AppInterface: React.FC<AppViewProps> = ({
                                                           outline: 'none'
                                                         }}
                                                       />
-                                                      {diagnosisInputs[passId]?.jiraTicketUrl && (
+                                                      {diagnosisInputs[passId]?.jiraTicketUrl && !jiraValidationErrors[passId] && (
                                                         <a
                                                           href={diagnosisInputs[passId].jiraTicketUrl}
                                                           target="_blank"
@@ -1570,6 +1613,15 @@ const AppInterface: React.FC<AppViewProps> = ({
                                                         </a>
                                                       )}
                                                     </div>
+                                                    {jiraValidationErrors[passId] && (
+                                                      <div style={{ 
+                                                        fontSize: '12px', 
+                                                        color: '#dc2626', 
+                                                        marginTop: '4px' 
+                                                      }}>
+                                                        {jiraValidationErrors[passId]}
+                                                      </div>
+                                                    )}
                                                   </div>
                                                 )}
 
@@ -1611,6 +1663,8 @@ const AppInterface: React.FC<AppViewProps> = ({
                                                     onClick={() => savePassMetadata(passId, !pass.success)}
                                                     disabled={(() => {
                                                       if (savingMetadata.has(passId) || metadataSuccess.has(passId)) return true;
+                                                      // Disable if there are JIRA validation errors
+                                                      if (jiraValidationErrors[passId]) return true;
                                                       const noteText = noteInputs[passId] || '';
                                                       const existingNoteText = passNotesData.length > 0 ? passNotesData[0].note_text : '';
                                                       const noteChanged = noteText.trim() !== existingNoteText.trim();
