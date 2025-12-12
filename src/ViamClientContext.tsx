@@ -5,7 +5,6 @@ import Cookies from "js-cookie";
 interface ViamClientContextType {
   locationId: string;
   machineId: string;
-  machineInfo: string;
   machineName: string;
   organizationId: string;
   robotClient: VIAM.RobotClient | null;
@@ -105,7 +104,6 @@ export function ViamClientProvider({ children }: { children: ReactNode }) {
       hostname,
       locationId,
       machineId,
-      machineInfo,
       machineName,
       errors,
     };
@@ -195,7 +193,6 @@ export function ViamClientProvider({ children }: { children: ReactNode }) {
       value={{
         locationId: urlAndCookieData.locationId,
         machineId: urlAndCookieData.machineId,
-        machineInfo: urlAndCookieData.machineInfo,
         machineName: urlAndCookieData.machineName,
         organizationId,
         viamClient,
