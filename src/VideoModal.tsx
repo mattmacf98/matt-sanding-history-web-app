@@ -1,8 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import * as VIAM from "@viamrobotics/sdk";
 
-import { extractCameraName } from './lib/videoUtils';
-import { createVideoStreamFromBase64 } from './lib/videoUtils';
 import { useViamClients } from './ViamClientContext';
 
 interface VideoModalProps {
@@ -20,41 +18,8 @@ const VideoModal: React.FC<VideoModalProps> = ({
   const [loadingModalVideo, setLoadingModalVideo] = useState(false);
 
   const closeVideoModal = () => {
-    // Clean up video URL if it exists
-    if (modalVideoUrl && modalVideoUrl.startsWith('blob:')) {
-      URL.revokeObjectURL(modalVideoUrl);
-    }
     setModalVideoUrl(null);
     onClose();
-  };
-
-  const handleDownload = async () => {
-    if (!selectedVideo || !modalVideoUrl) return;
-    
-    try {
-      // Fetch the blob data from the modalVideoUrl
-      const response = await fetch(modalVideoUrl);
-      const blob = await response.blob();
-      
-      // Create a download link
-      const fileName = selectedVideo.metadata?.fileName || 'video.mp4';
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = fileName;
-      a.style.display = 'none';
-      
-      // Trigger download
-      document.body.appendChild(a);
-      a.click();
-      
-      // Cleanup
-      document.body.removeChild(a);
-      window.URL.revokeObjectURL(url);
-    } catch (error) {
-      console.error('Download failed:', error);
-      alert('Download failed. Please try again.');
-    }
   };
 
   // Handle escape key to close modal
@@ -77,28 +42,21 @@ const VideoModal: React.FC<VideoModalProps> = ({
   // Fetch video when selectedVideo changes
   useEffect(() => {
     if (selectedVideo) {
-      const fetchVideo = async () => {
+      const fetchVideoURL = async () => {
         setLoadingModalVideo(true);
         try {
-          console.log("fetching video", selectedVideo.metadata!.binaryDataId);
-          const binaryData = await viamClient.dataClient.binaryDataByIds([selectedVideo.metadata!.binaryDataId]);
-          if (binaryData.length > 0) {
-            setModalVideoUrl(createVideoStreamFromBase64(binaryData[0].binary));
-          }
+          console.log("creating signed URL for video", selectedVideo.metadata!.binaryDataId);
+          const url = await viamClient.dataClient.createBinaryDataSignedURL(selectedVideo.metadata!.binaryDataId, 60);
+          setModalVideoUrl(url);
         } catch (error) {
-          console.error("Error fetching video:", error);
+          console.error("Error creating signed URL for video:", error);
         } finally {
           setLoadingModalVideo(false);
         }
       };
-      fetchVideo();
-    }
 
-    return () => {
-      if (modalVideoUrl && modalVideoUrl.startsWith('blob:')) {
-        URL.revokeObjectURL(modalVideoUrl);
-      }
-    };
+      fetchVideoURL();
+    }
   }, [selectedVideo, viamClient]);
 
   if (!selectedVideo) {
@@ -111,6 +69,7 @@ const VideoModal: React.FC<VideoModalProps> = ({
         <div className="video-modal-header">
           <button className="video-modal-close" onClick={closeVideoModal}>×</button>
         </div>
+
         <div className="video-modal-content">
           <div className="video-modal-player">
             {loadingModalVideo ? (
@@ -119,7 +78,7 @@ const VideoModal: React.FC<VideoModalProps> = ({
                 <p>Loading video...</p>
               </>
             ) : modalVideoUrl ? (
-              <video 
+              <video
                 controls 
                 autoPlay
                 src={modalVideoUrl}
@@ -140,6 +99,7 @@ const VideoModal: React.FC<VideoModalProps> = ({
               </>
             )}
           </div>
+
           <div className="video-modal-info">
             <p>
               <strong>File:</strong>{' '}
