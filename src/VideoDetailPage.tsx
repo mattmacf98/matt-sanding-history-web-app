@@ -1,7 +1,7 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { useParams, useSearchParams } from 'react-router-dom';
+import { useParams, useSearchParams, Link } from 'react-router-dom';
+
 import { useViamClients } from './ViamClientContext';
-import { Link } from 'react-router-dom';
 
 function VideoDetailPage() {
   const { machineInfo, videoId } = useParams<{ machineInfo: string, videoId: string }>();
