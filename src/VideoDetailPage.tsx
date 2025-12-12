@@ -1,6 +1,7 @@
 import { useParams, useSearchParams } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { useViamClients } from './ViamClientContext';
+import { Link } from 'react-router-dom';
 
 function VideoDetailPage() {
   const { machineInfo, videoId } = useParams<{ machineInfo: string, videoId: string }>();
@@ -37,7 +38,7 @@ function VideoDetailPage() {
 
   return (
     <div style={{ padding: '20px', width: '100%', height: '100%' }}>
-      <a href={`/machine/${machineInfo}`} className="text-blue-500">Go to sanding history</a>
+      <Link to={`/machine/${machineInfo}`} style={{ color: '#3b82f6' }}>Go to sanding history</Link>
 
       <h2 className="font-semibold text-zinc-900">Sanding video</h2>
       <p><span className="font-semibold text-zinc-900">Location:</span> {locationId}</p>
