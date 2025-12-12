@@ -51,7 +51,7 @@ export function ViamClientProvider({ children }: { children: ReactNode }) {
       errors.push("Invalid URL format. Expected: /machine/[machine-name]-main.[location-id].viam.cloud");
     }
 
-    // Parse machine name and location from URL
+    // Parse machine name and location from URL.
     const machineNameMatch = window.location.pathname.match(machineNameRegex);
     if (!machineNameMatch) {
       errors.push("Could not parse machine name from URL");
@@ -66,7 +66,7 @@ export function ViamClientProvider({ children }: { children: ReactNode }) {
       locationId = locationIdMatch[1];
     }
 
-    // Parse cookie data
+    // Parse cookie data.
     if (machineInfo) {
       const cookieData = Cookies.get(machineInfo);
       if (!cookieData) {
@@ -109,7 +109,6 @@ export function ViamClientProvider({ children }: { children: ReactNode }) {
     };
   }, []); // Only run once on mount.
 
-  // Set errors in a useEffect to avoid setState during render
   useEffect(() => {
     if (urlAndCookieData.errors.length > 0) {
       setInitializationErrors(urlAndCookieData.errors);
