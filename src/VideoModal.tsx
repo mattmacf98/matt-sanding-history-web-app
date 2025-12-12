@@ -76,7 +76,7 @@ const VideoModal: React.FC<VideoModalProps> = ({
 
   // Fetch video when selectedVideo changes
   useEffect(() => {
-    if (selectedVideo && viamClient) {
+    if (selectedVideo) {
       const fetchVideo = async () => {
         setLoadingModalVideo(true);
         try {
