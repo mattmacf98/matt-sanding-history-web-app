@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import * as VIAM from "@viamrobotics/sdk";
 
 import { useViamClients } from './ViamClientContext';
@@ -16,6 +17,10 @@ const VideoModal: React.FC<VideoModalProps> = ({
 
   const [modalVideoUrl, setModalVideoUrl] = useState<string | null>(null);
   const [loadingModalVideo, setLoadingModalVideo] = useState(false);
+
+  const videoPageURL  = selectedVideo
+    ? `${window.location.href}/videos/${selectedVideo.metadata!.binaryDataId.split('/').pop()}?name=${selectedVideo.metadata!.fileName}`
+    : '';
 
   const closeVideoModal = () => {
     setModalVideoUrl(null);
@@ -101,6 +106,13 @@ const VideoModal: React.FC<VideoModalProps> = ({
           </div>
 
           <div className="video-modal-info">
+            <a
+              href={videoPageURL}
+              style={{ color: '#3b82f6' }}
+              target="_blank"
+            >
+              Go to video
+            </a>
             <p>
               <strong>File:</strong>{' '}
               {selectedVideo.metadata?.uri ? (
