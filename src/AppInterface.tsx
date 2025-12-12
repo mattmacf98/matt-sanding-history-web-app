@@ -45,6 +45,7 @@ const PassFiles: React.FC<PassFilesProps> = ({
   debouncedFileSearchInputs,
 }) => {
   const { viamClient } = useViamClient();
+
   const passId = pass.pass_id;
 
   const handleDownload = async (file: VIAM.dataApi.BinaryData) => {
