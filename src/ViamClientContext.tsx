@@ -70,7 +70,7 @@ export function ViamClientProvider({ children }: { children: ReactNode }) {
     if (machineInfo) {
       const cookieData = Cookies.get(machineInfo);
       if (!cookieData) {
-        errors.push(`No credentials found for machine: ${machineInfo}`);
+        errors.push(`No cookie called ${machineInfo} found`);
       } else {
         try {
           const parsed = JSON.parse(cookieData);
