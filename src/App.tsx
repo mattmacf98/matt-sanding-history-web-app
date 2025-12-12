@@ -123,10 +123,6 @@ function App() {
 
   useEffect(() => {
     const fetchPasses = async () => {
-      if (!organizationId || !locationId || !machineId) {
-        return;
-      }
-
       console.log("Fetching data start");
 
       // batched fetching of pass summaries
