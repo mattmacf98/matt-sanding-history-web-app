@@ -272,7 +272,12 @@ const PassFiles: React.FC<PassFilesProps> = ({
                       Download
                     </a>
                     <a
-                      href={`https://storage.cloud.google.com/viam-data-${organizationId}/${organizationId}/${machineId}/${partId}/files/${file.metadata?.binaryDataId.split("/").pop()}${file.metadata?.fileName}.gz`}
+                      href={
+                        `https://storage.cloud.google.com/viam-data-${organizationId}/` +
+                        `${organizationId}/${machineId}/${partId}/files/` +
+                        `${file.metadata?.binaryDataId.split("/").pop()}` +
+                        `${file.metadata?.fileName}.gz`
+                      }
                       target="_blank"
                       style={{
                         marginLeft: '12px',
