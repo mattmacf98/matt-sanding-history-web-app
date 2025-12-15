@@ -29,6 +29,47 @@ export interface PassNote {
   created_by: string;
 }
 
+// Symptom options - what happened during the failure
+export const SYMPTOM_OPTIONS = [
+  'P-Stop',
+  'User Cancelled',
+  'Joint Out of Bounds',
+  'Mesh Generation Failed',
+  'E-Stop',
+  'System Error',
+  'Other',
+] as const;
+
+export type Symptom = typeof SYMPTOM_OPTIONS[number];
+
+// Cause options - why the failure happened
+export const CAUSE_OPTIONS = [
+  'Intentional Stop',
+  'Part Issue',
+  'Cable Management',
+  'Hose Management',
+  'Network Issue',
+  'Voltage Issue',
+  'Configuration Error',
+  'Software Bug',
+  'Trajectory Generation',
+  'Inaccurate mesh',
+  'Hole in mesh',
+  'Lunch/EOD',
+  'Unknown',
+  'Other',
+] as const;
+
+export type Cause = typeof CAUSE_OPTIONS[number];
+
+export interface PassDiagnosis {
+  pass_id: string;
+  symptom?: Symptom;
+  cause?: Cause;
+  updated_at: string;
+  updated_by: string;
+}
+
 export interface RobotConfigMetadata {
   partId: string;
   robotId: string;
