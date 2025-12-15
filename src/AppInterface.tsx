@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import * as VIAM from "@viamrobotics/sdk";
 import './AppInterface.css';
 import StepVideosGrid from './StepVideosGrid';
@@ -19,10 +19,16 @@ import {
   getPassConfigComparison,
 } from './lib/configUtils';
 import { Pass, PassNote, Step, RobotConfigMetadata } from './types';
+import Button from './components/Button';
+import RenderIf from './components/RenderIf';
+import { BinaryDataManager } from './lib/BinaryDataManager';
+import { BinaryDataFile } from './lib/BinaryDataFile';
+import { SNAPSHOT_FILE_NAME_PREFIX } from './lib/constants';
+
 
 interface PassFilesProps {
   pass: Pass;
-  files: Map<string, VIAM.dataApi.BinaryData>;
+  binaryDataManager: BinaryDataManager;
   viamClient: VIAM.ViamClient;
   fetchTimestamp: Date | null;
   expandedFiles: Set<string>;
@@ -34,7 +40,7 @@ interface PassFilesProps {
 
 const PassFiles: React.FC<PassFilesProps> = ({
   pass,
-  files,
+  binaryDataManager,
   fetchTimestamp,
   expandedFiles,
   toggleFilesExpansion,
@@ -48,42 +54,27 @@ const PassFiles: React.FC<PassFilesProps> = ({
     const passStart = new Date(pass.start);
     const passEnd = new Date(pass.end);
 
-    const passTimeRangeFileIDS: string[] = [];
-    files.forEach((file, binaryDataId) => {
-      if (file.metadata?.timeRequested) {
-        const fileTime = file.metadata.timeRequested.toDate();
-        if (fileTime >= passStart && fileTime <= passEnd) {
-          passTimeRangeFileIDS.push(binaryDataId);
-        }
-      }
-    });
+    const passTimeRangeFileIDS: string[] = binaryDataManager.getBinaryFileIdsInTimeRange(passStart, passEnd);
 
-    const passFileIDs: string[] = [];
-    if (pass.pass_id && pass.pass_id.trim() !== '') {
-      files.forEach((file, binaryDataId) => {
-        if (file.metadata?.fileName && file.metadata.fileName.split("/").filter((y) => y === pass.pass_id).length > 0) {
-          passFileIDs.push(binaryDataId);
-        }
-      });
-    }
+    const passFileIDs: string[] = binaryDataManager.getBinaryFileIdsForPass(passId);
 
     const ids = new Set([...passFileIDs, ...passTimeRangeFileIDS]);
-    return Array.from(files.values())
-      .filter((x) => ids.has(x.metadata!.binaryDataId))
+    return Array.from(binaryDataManager.binaryDataFiles)
+      .filter((x) => ids.has(x.binaryDataId))
       .sort((a, b) => {
-        const timeA = a.metadata!.timeRequested!.toDate().getTime();
-        const timeB = b.metadata!.timeRequested!.toDate().getTime();
+        const timeA = a.timeRequested!.getTime();
+        const timeB = b.timeRequested!.getTime();
         return timeA - timeB;
       });
-  }, [pass, files]);
+  }, [pass, binaryDataManager]);
 
   const filteredPassFiles = useMemo(() => {
     const searchTerm = (debouncedFileSearchInputs[passId] || '').toLowerCase();
     if (!searchTerm) return passFiles;
 
     return passFiles.filter(file => {
-      const fileName = file.metadata?.fileName?.split('/').pop()?.toLowerCase() || '';
-      const fullPath = file.metadata?.fileName?.toLowerCase() || '';
+      const fileName = file.fileName.split('/').pop()?.toLowerCase() || '';
+      const fullPath = file.fileName.toLowerCase() || '';
       return fileName.includes(searchTerm) || fullPath.includes(searchTerm);
     });
   }, [passFiles, debouncedFileSearchInputs, passId]);
@@ -175,7 +166,8 @@ const PassFiles: React.FC<PassFilesProps> = ({
           }}>
             {filteredPassFiles
               .map((file, fileIndex, filteredFiles) => {
-                const fileName = file.metadata?.fileName?.split('/').pop() || 'Unknown file';
+
+                const fileName = file.fileName.split('/').pop() || 'Unknown file';
 
                 return (
                   <div
@@ -209,7 +201,7 @@ const PassFiles: React.FC<PassFilesProps> = ({
                         overflow: 'hidden',
                         whiteSpace: 'nowrap',
                         flex: 1
-                      }} title={file.metadata?.fileName || fileName}>
+                      }} title={file.fileName || fileName}>
                         {fileName}
                       </span>
                       <span style={{
@@ -218,12 +210,12 @@ const PassFiles: React.FC<PassFilesProps> = ({
                         whiteSpace: 'nowrap',
                         flexShrink: 0
                       }}>
-                        {file.metadata?.timeRequested?.toDate().toLocaleTimeString() || ''}
+                        {file.timeRequested?.toLocaleTimeString() || ''}
                       </span>
                     </div>
                     <a
-                      href={file.metadata?.uri}
-                      download={file.metadata?.fileName?.split('/').pop() || 'download'}
+                      href={file.uri}
+                      download={file.fileName.split('/').pop() || 'download'}
                       style={{
                         marginLeft: '12px',
                         padding: '6px 8px',
@@ -334,6 +326,15 @@ const AppInterface: React.FC<AppViewProps> = ({
   const [fileSearchInputs, setFileSearchInputs] = useState<Record<string, string>>({});
   const [debouncedFileSearchInputs, setDebouncedFileSearchInputs] = useState<Record<string, string>>({});
   const [expandedErrors, setExpandedErrors] = useState<Set<string>>(new Set());
+  const binaryDataManger = useRef<BinaryDataManager>(new BinaryDataManager());
+
+
+  useEffect(() => {
+    binaryDataManger.current = new BinaryDataManager();
+    Array.from(files.values()).forEach((file) => {
+      binaryDataManger.current?.addBinaryDataFile(new BinaryDataFile(file));
+    });
+  }, [files]);
 
   // Debounce file search inputs
   useEffect(() => {
@@ -1405,6 +1406,21 @@ const AppInterface: React.FC<AppViewProps> = ({
                                               </div>
                                             );
                                           })}
+                                          <RenderIf condition={binaryDataManger.current.searchBinaryDataByFileName(SNAPSHOT_FILE_NAME_PREFIX).length > 0}>
+                                            <div className="step-card">
+                                              <div className="step-name">View Snapshot</div>
+                                              <p>
+                                                Load and display a 3D scene from a snapshot file.
+                                                </p>
+                                                <div style={{ display: "flex", justifyContent: "center", alignItems: "center" }}>
+                                                  <Button>
+                                                    View
+                                                  </Button>
+                                                </div>
+                                            </div>
+                                          </RenderIf>
+                                          
+                                          
                                         </div>
 
                                         {/* Pass Notes Section - standalone above Files */}
@@ -1495,7 +1511,7 @@ const AppInterface: React.FC<AppViewProps> = ({
                                           <div style={{ flex: '2 1 0%', minWidth: 0 }}>
                                             <PassFiles
                                               pass={pass}
-                                              files={files}
+                                              binaryDataManager={binaryDataManger.current!}
                                               viamClient={viamClient}
                                               fetchTimestamp={fetchTimestamp}
                                               expandedFiles={expandedFiles}
