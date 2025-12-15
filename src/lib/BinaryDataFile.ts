@@ -1,34 +1,38 @@
 import * as VIAM from "@viamrobotics/sdk";
 
 export class BinaryDataFile {
-    private binaryData: VIAM.dataApi.BinaryData;
+    private _binaryData: VIAM.dataApi.BinaryData;
 
     constructor(binaryData: VIAM.dataApi.BinaryData) {
-        this.binaryData = binaryData;
+        this._binaryData = binaryData;
     }
 
     get binaryDataId(): string {
-        return this.binaryData.metadata?.binaryDataId || '';
+        return this._binaryData.metadata?.binaryDataId || '';
+    }
+
+    get binaryData(): VIAM.dataApi.BinaryData {
+        return this._binaryData;
     }
 
     get datasetIds(): string[] {
-        return this.binaryData.metadata?.datasetIds || [];
+        return this._binaryData.metadata?.datasetIds || [];
     }
 
     get fileExtension(): string {
-        return this.binaryData.metadata?.fileExt || '';
+        return this._binaryData.metadata?.fileExt || '';
     }
 
     get fileName(): string {
-        return this.binaryData.metadata?.fileName || '';
+        return this._binaryData.metadata?.fileName || '';
     }
 
     get timeRequested(): Date | undefined {
-        return this.binaryData.metadata?.timeRequested?.toDate();
+        return this._binaryData.metadata?.timeRequested?.toDate();
     }
 
     get uri(): string {
-        return this.binaryData.metadata?.uri || '';
+        return this._binaryData.metadata?.uri || '';
     }
 
     public isInTimeRange(start: Date, end: Date): boolean {

@@ -242,7 +242,7 @@ const PassFiles: React.FC<PassFilesProps> = ({
                       onClick={(e) => {
                         e.preventDefault();
                         e.stopPropagation();
-                        handleDownload(file);
+                        handleDownload(file.binaryData);
                       }}
                       style={{
                         marginLeft: '12px',
