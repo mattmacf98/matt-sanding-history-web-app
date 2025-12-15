@@ -32,6 +32,7 @@ interface PassFilesProps {
   fileSearchInputs: Record<string, string>;
   handleFileSearchChange: (passId: string, value: string) => void;
   debouncedFileSearchInputs: Record<string, string>;
+  partId: string;
 }
 
 const PassFiles: React.FC<PassFilesProps> = ({
@@ -43,8 +44,9 @@ const PassFiles: React.FC<PassFilesProps> = ({
   fileSearchInputs,
   handleFileSearchChange,
   debouncedFileSearchInputs,
+  partId,
 }) => {
-  const { viamClient } = useViamClients();
+  const { machineId, organizationId, viamClient } = useViamClients();
 
   const passId = pass.pass_id;
 
@@ -268,6 +270,27 @@ const PassFiles: React.FC<PassFilesProps> = ({
                       }}
                     >
                       Download
+                    </a>
+                    <a
+                      href={
+                        `https://storage.cloud.google.com/viam-data-${organizationId}/` +
+                        `${organizationId}/${machineId}/${partId}/files/` +
+                        `${file.metadata?.binaryDataId.split("/").pop()}` +
+                        `${file.metadata?.fileName}.gz`
+                      }
+                      target="_blank"
+                      style={{
+                        marginLeft: '12px',
+                        padding: '6px 8px',
+                        backgroundColor: '#1d4ed8',
+                        color: 'white',
+                        borderRadius: '4px',
+                        fontSize: '12px',
+                        border: 'none',
+                        textDecoration: 'none'
+                      }}
+                    >
+                      Download from GCS
                     </a>
                   </div>
                 );
@@ -1674,6 +1697,7 @@ const AppInterface: React.FC<AppViewProps> = ({
                                               fileSearchInputs={fileSearchInputs}
                                               handleFileSearchChange={handleFileSearchChange}
                                               debouncedFileSearchInputs={debouncedFileSearchInputs}
+                                              partId={partId}
                                             />
                                           </div>
                                         </div>
