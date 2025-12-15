@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import * as VIAM from "@viamrobotics/sdk";
 import AppInterface from './AppInterface';
 import { JsonValue } from '@viamrobotics/sdk';
-import { Pass, PassNote, PassDiagnosis } from './types';
+import { Pass, PassNote, PassDiagnosis } from './lib/types';
 import { Timestamp } from '@bufbuild/protobuf';
 
 import { getPassMetadataManager } from './lib/passMetadataManager';
@@ -27,6 +27,8 @@ function App() {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 7; // 7 days per page
 
+
+  // TODO: context for these files and the passes, then can combine App and AppInterface into one component
   const fetchFiles = async (start: Date, shouldSetLoadingState: boolean = true) => {
     const end = new Date();
 

@@ -1,5 +1,5 @@
 import * as VIAM from "@viamrobotics/sdk";
-import { Step } from "../AppInterface";
+import { Step } from "./types";
 
 // Global polling state to handle multiple concurrent requests
 interface PollingRequest {

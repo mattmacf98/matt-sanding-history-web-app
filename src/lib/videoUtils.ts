@@ -1,5 +1,5 @@
 import * as VIAM from "@viamrobotics/sdk";
-import { Step } from "../AppInterface";
+import { Step } from "./types";
 
 export const createVideoStreamFromBase64 = (base64Data: Uint8Array): string | null => {
   try {
