@@ -28,12 +28,6 @@ jobs:
           npm ci
           npm run build
 
-      - name: Create Release Pull Request
-        id: changesets
-        uses: changesets/action@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
       - name: Create git tag if version changed
         run: |
           git fetch --tags
@@ -50,3 +44,9 @@ jobs:
             git push origin "$TAG"
             echo "Created tag $TAG"
           fi
+
+      - name: Create Release Pull Request
+        id: changesets
+        uses: changesets/action@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
