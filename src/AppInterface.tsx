@@ -647,11 +647,15 @@ const AppInterface: React.FC<AppViewProps> = ({
       executionPercentage: number;
       formattedDate: string;
       totalBluePoints: number;
+      symptomCounts: Map<string, number>;
+      causeCounts: Map<string, number>;
     }>, [dateKey, passes]) => {
       let totalFactoryTime = 0;
       let totalExecutionTime = 0;
       let totalOtherStepsTime = 0;
       let totalBluePoints = 0;
+      const symptomCounts = new Map<string, number>();
+      const causeCounts = new Map<string, number>();
 
       // Calculate both time and execution metrics
       passes.forEach(pass => {
@@ -677,6 +681,19 @@ const AppInterface: React.FC<AppViewProps> = ({
         if (pass.blue_point_count !== undefined) {
           totalBluePoints += pass.blue_point_count;
         }
+
+        // Count diagnoses for failed passes
+        if (!pass.success) {
+          const diagnosis = passDiagnoses.get(pass.pass_id);
+          if (diagnosis) {
+            if (diagnosis.symptom) {
+              symptomCounts.set(diagnosis.symptom, (symptomCounts.get(diagnosis.symptom) || 0) + 1);
+            }
+            if (diagnosis.cause) {
+              causeCounts.set(diagnosis.cause, (causeCounts.get(diagnosis.cause) || 0) + 1);
+            }
+          }
+        }
       });
 
       const totalStepsTime = totalExecutionTime + totalOtherStepsTime;
@@ -694,12 +711,14 @@ const AppInterface: React.FC<AppViewProps> = ({
         totalPassCount: passes.length,
         executionPercentage,
         formattedDate,
-        totalBluePoints
+        totalBluePoints,
+        symptomCounts,
+        causeCounts
       };
 
       return acc;
     }, {});
-  }, [groupedPasses]);
+  }, [groupedPasses, passDiagnoses]);
 
   const toggleRowExpansion = (index: string) => {
     const newExpandedRows = new Set(expandedRows);
@@ -942,7 +961,9 @@ const AppInterface: React.FC<AppViewProps> = ({
                       totalOtherStepsTime,
                       totalPassCount,
                       executionPercentage,
-                      formattedDate
+                      formattedDate,
+                      symptomCounts,
+                      causeCounts
                     } = dayAggregates[dateKey];
 
                     return (
@@ -971,6 +992,14 @@ const AppInterface: React.FC<AppViewProps> = ({
                                 <div className="day-summary-item">
                                   <span className="day-summary-label">Execution %</span>
                                   <span className="day-summary-value">{executionPercentage.toFixed(1)}%</span>
+                                </div>
+                                <div className="day-summary-item">
+                                  <span className="day-summary-label">Symptoms</span>
+                                  <span className="day-summary-value">{symptomCounts.size}</span>
+                                </div>
+                                <div className="day-summary-item">
+                                  <span className="day-summary-label">Causes</span>
+                                  <span className="day-summary-value">{causeCounts.size}</span>
                                 </div>
                               </div>
                             </div>
