@@ -993,13 +993,37 @@ const AppInterface: React.FC<AppViewProps> = ({
                                   <span className="day-summary-label">Execution %</span>
                                   <span className="day-summary-value">{executionPercentage.toFixed(1)}%</span>
                                 </div>
-                                <div className="day-summary-item">
+                                <div className="day-summary-item diagnosis-item">
                                   <span className="day-summary-label">Symptoms</span>
-                                  <span className="day-summary-value">{symptomCounts.size}</span>
+                                  <span className="day-summary-value diagnosis-list" style={{ fontSize: '11px', lineHeight: '1.4' }}>
+                                    {symptomCounts.size > 0 ? (
+                                      Array.from(symptomCounts.entries())
+                                        .sort((a, b) => b[1] - a[1])
+                                        .map(([symptom, count], idx) => (
+                                          <div key={symptom}>
+                                            {symptom}: {count}
+                                          </div>
+                                        ))
+                                    ) : (
+                                      <span>—</span>
+                                    )}
+                                  </span>
                                 </div>
-                                <div className="day-summary-item">
+                                <div className="day-summary-item diagnosis-item">
                                   <span className="day-summary-label">Causes</span>
-                                  <span className="day-summary-value">{causeCounts.size}</span>
+                                  <span className="day-summary-value diagnosis-list" style={{ fontSize: '11px', lineHeight: '1.4' }}>
+                                    {causeCounts.size > 0 ? (
+                                      Array.from(causeCounts.entries())
+                                        .sort((a, b) => b[1] - a[1])
+                                        .map(([cause, count], idx) => (
+                                          <div key={cause}>
+                                            {cause}: {count}
+                                          </div>
+                                        ))
+                                    ) : (
+                                      <span>—</span>
+                                    )}
+                                  </span>
                                 </div>
                               </div>
                             </div>
