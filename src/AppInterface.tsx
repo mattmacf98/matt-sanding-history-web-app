@@ -256,8 +256,8 @@ const PassFiles: React.FC<PassFilesProps> = ({
                       href={
                         `https://storage.cloud.google.com/viam-data-${organizationId}/` +
                         `${organizationId}/${machineId}/${partId}/files/` +
-                        `${file.metadata?.binaryDataId.split("/").pop()}` +
-                        `${file.metadata?.fileName}.gz`
+                        `${file.binaryDataId.split("/").pop()}` +
+                        `${file.fileName}.gz`
                       }
                       target="_blank"
                       style={{
