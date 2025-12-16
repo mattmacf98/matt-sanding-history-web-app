@@ -365,7 +365,8 @@ const AppInterface: React.FC<AppViewProps> = ({
   const [expandedErrors, setExpandedErrors] = useState<Set<string>>(new Set());
 
   // Diagnosis UI state
-  const [diagnosisInputs, setDiagnosisInputs] = useState<Record<string, { symptom?: string; cause?: string }>>({});
+  const [diagnosisInputs, setDiagnosisInputs] = useState<Record<string, { symptom?: string; cause?: string; jiraTicketUrl?: string }>>({});
+  const [jiraValidationErrors, setJiraValidationErrors] = useState<Record<string, string>>({});
   // Combined saving state for notes + diagnosis
   const [savingMetadata, setSavingMetadata] = useState<Set<string>>(new Set());
   const [metadataSuccess, setMetadataSuccess] = useState<Set<string>>(new Set());
@@ -403,11 +404,12 @@ const AppInterface: React.FC<AppViewProps> = ({
 
   // Initialize diagnosis inputs from existing diagnoses
   useEffect(() => {
-    const initialDiagnoses: Record<string, { symptom?: string; cause?: string }> = {};
+    const initialDiagnoses: Record<string, { symptom?: string; cause?: string; jiraTicketUrl?: string }> = {};
     passDiagnoses.forEach((diagnosis, passId) => {
       initialDiagnoses[passId] = {
         symptom: diagnosis.symptom,
-        cause: diagnosis.cause
+        cause: diagnosis.cause,
+        jiraTicketUrl: diagnosis.jira_ticket_url
       };
     });
     setDiagnosisInputs(initialDiagnoses);
@@ -427,7 +429,7 @@ const AppInterface: React.FC<AppViewProps> = ({
     }
   };
 
-  const handleDiagnosisChange = (passId: string, field: 'symptom' | 'cause', value: string) => {
+  const handleDiagnosisChange = (passId: string, field: 'symptom' | 'cause' | 'jiraTicketUrl', value: string) => {
     setDiagnosisInputs(prev => ({
       ...prev,
       [passId]: {
@@ -435,6 +437,48 @@ const AppInterface: React.FC<AppViewProps> = ({
         [field]: value || undefined
       }
     }));
+
+    // Validate JIRA URL format
+    if (field === 'jiraTicketUrl') {
+      const trimmedValue = value.trim();
+      if (trimmedValue === '') {
+        // Empty is valid (field is optional)
+        setJiraValidationErrors(prev => {
+          const newErrors = { ...prev };
+          delete newErrors[passId];
+          return newErrors;
+        });
+      } else {
+        // Validate URL format
+        try {
+          const url = new URL(trimmedValue);
+          // Check if it's a Viam JIRA URL
+          if (url.hostname !== 'viam.atlassian.net') {
+            setJiraValidationErrors(prev => ({
+              ...prev,
+              [passId]: 'JIRA URL must be from viam.atlassian.net'
+            }));
+          } else if (!url.pathname.startsWith('/browse/')) {
+            setJiraValidationErrors(prev => ({
+              ...prev,
+              [passId]: 'JIRA URL must follow format: https://viam.atlassian.net/browse/PROJECT-123'
+            }));
+          } else {
+            // Valid JIRA URL
+            setJiraValidationErrors(prev => {
+              const newErrors = { ...prev };
+              delete newErrors[passId];
+              return newErrors;
+            });
+          }
+        } catch (e) {
+          setJiraValidationErrors(prev => ({
+            ...prev,
+            [passId]: 'Please enter a valid URL'
+          }));
+        }
+      }
+    }
 
     // Clear success state when editing
     if (metadataSuccess.has(passId)) {
@@ -449,7 +493,7 @@ const AppInterface: React.FC<AppViewProps> = ({
 
     const noteText = noteInputs[passId]?.trim() || '';
     const diagnosisData = diagnosisInputs[passId] || {};
-    const { symptom, cause } = diagnosisData;
+    const { symptom, cause, jiraTicketUrl } = diagnosisData;
 
     // Show saving indicator
     setSavingMetadata(prev => new Set(prev).add(passId));
@@ -462,7 +506,7 @@ const AppInterface: React.FC<AppViewProps> = ({
       
       // Save diagnosis only for failed passes
       if (isFailedPass) {
-        await metadataManager.savePassDiagnosis(passId, symptom, cause);
+        await metadataManager.savePassDiagnosis(passId, symptom, cause, jiraTicketUrl);
       }
 
       // Update notes in state
@@ -482,11 +526,12 @@ const AppInterface: React.FC<AppViewProps> = ({
       if (isFailedPass) {
         onDiagnosesUpdate(prevDiagnoses => {
           const newDiagnosesMap = new Map(prevDiagnoses);
-          if (symptom || cause) {
+          if (symptom || cause || jiraTicketUrl) {
             newDiagnosesMap.set(passId, {
               pass_id: passId,
               symptom: symptom as PassDiagnosis['symptom'],
               cause: cause as PassDiagnosis['cause'],
+              jira_ticket_url: jiraTicketUrl,
               updated_at: new Date().toISOString(),
               updated_by: "summary-web-app"
             });
@@ -1548,6 +1593,63 @@ const AppInterface: React.FC<AppViewProps> = ({
                                                   </div>
                                                 )}
 
+                                                {/* JIRA Ticket URL - only for failed passes when cause is selected */}
+                                                {!pass.success && diagnosisInputs[passId]?.cause && (
+                                                  <div>
+                                                    <label htmlFor={`jira-${passId}`} style={{ display: 'block', fontSize: '13px', fontWeight: 500, color: '#374151', marginBottom: '6px' }}>
+                                                      JIRA Ticket (e.g. https://viam.atlassian.net/browse/RSDK-1234)
+                                                    </label>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                      <input
+                                                        id={`jira-${passId}`}
+                                                        type="url"
+                                                        value={diagnosisInputs[passId]?.jiraTicketUrl || ''}
+                                                        onChange={(e) => handleDiagnosisChange(passId, 'jiraTicketUrl', e.target.value)}
+                                                        placeholder="https://viam.atlassian.net/browse/RSDK-..."
+                                                        style={{
+                                                          flex: 1,
+                                                          padding: '10px 12px',
+                                                          fontSize: '14px',
+                                                          border: '1px solid #d1d5db',
+                                                          borderRadius: '6px',
+                                                          backgroundColor: '#ffffff',
+                                                          outline: 'none'
+                                                        }}
+                                                      />
+                                                      {diagnosisInputs[passId]?.jiraTicketUrl && !jiraValidationErrors[passId] && (
+                                                        <a
+                                                          href={diagnosisInputs[passId].jiraTicketUrl}
+                                                          target="_blank"
+                                                          rel="noopener noreferrer"
+                                                          style={{
+                                                            padding: '10px 12px',
+                                                            fontSize: '14px',
+                                                            color: '#3b82f6',
+                                                            textDecoration: 'none',
+                                                            border: '1px solid #d1d5db',
+                                                            borderRadius: '6px',
+                                                            backgroundColor: '#ffffff',
+                                                            display: 'flex',
+                                                            alignItems: 'center'
+                                                          }}
+                                                          title="Open JIRA ticket"
+                                                        >
+                                                          🔗
+                                                        </a>
+                                                      )}
+                                                    </div>
+                                                    {jiraValidationErrors[passId] && (
+                                                      <div style={{ 
+                                                        fontSize: '12px', 
+                                                        color: '#dc2626', 
+                                                        marginTop: '4px' 
+                                                      }}>
+                                                        {jiraValidationErrors[passId]}
+                                                      </div>
+                                                    )}
+                                                  </div>
+                                                )}
+
                                                 {/* Notes textarea - always shown */}
                                                 <div>
                                                   {/* Only show label when there are diagnosis fields above */}
@@ -1586,13 +1688,16 @@ const AppInterface: React.FC<AppViewProps> = ({
                                                     onClick={() => savePassMetadata(passId, !pass.success)}
                                                     disabled={(() => {
                                                       if (savingMetadata.has(passId) || metadataSuccess.has(passId)) return true;
+                                                      // Disable if there are JIRA validation errors
+                                                      if (jiraValidationErrors[passId]) return true;
                                                       const noteText = noteInputs[passId] || '';
                                                       const existingNoteText = passNotesData.length > 0 ? passNotesData[0].note_text : '';
                                                       const noteChanged = noteText.trim() !== existingNoteText.trim();
                                                       if (!pass.success) {
                                                         const diagnosisChanged = 
                                                           (passDiagnoses.get(passId)?.symptom || '') !== (diagnosisInputs[passId]?.symptom || '') ||
-                                                          (passDiagnoses.get(passId)?.cause || '') !== (diagnosisInputs[passId]?.cause || '');
+                                                          (passDiagnoses.get(passId)?.cause || '') !== (diagnosisInputs[passId]?.cause || '') ||
+                                                          (passDiagnoses.get(passId)?.jira_ticket_url || '') !== (diagnosisInputs[passId]?.jiraTicketUrl || '');
                                                         return !noteChanged && !diagnosisChanged;
                                                       }
                                                       return !noteChanged;
@@ -1609,7 +1714,8 @@ const AppInterface: React.FC<AppViewProps> = ({
                                                         if (!pass.success) {
                                                           const diagnosisChanged = 
                                                             (passDiagnoses.get(passId)?.symptom || '') !== (diagnosisInputs[passId]?.symptom || '') ||
-                                                            (passDiagnoses.get(passId)?.cause || '') !== (diagnosisInputs[passId]?.cause || '');
+                                                            (passDiagnoses.get(passId)?.cause || '') !== (diagnosisInputs[passId]?.cause || '') ||
+                                                            (passDiagnoses.get(passId)?.jira_ticket_url || '') !== (diagnosisInputs[passId]?.jiraTicketUrl || '');
                                                           return noteChanged || diagnosisChanged ? '#3b82f6' : '#9ca3af';
                                                         }
                                                         return noteChanged ? '#3b82f6' : '#9ca3af';
@@ -1624,7 +1730,8 @@ const AppInterface: React.FC<AppViewProps> = ({
                                                         if (!pass.success) {
                                                           const diagnosisChanged = 
                                                             (passDiagnoses.get(passId)?.symptom || '') !== (diagnosisInputs[passId]?.symptom || '') ||
-                                                            (passDiagnoses.get(passId)?.cause || '') !== (diagnosisInputs[passId]?.cause || '');
+                                                            (passDiagnoses.get(passId)?.cause || '') !== (diagnosisInputs[passId]?.cause || '') ||
+                                                            (passDiagnoses.get(passId)?.jira_ticket_url || '') !== (diagnosisInputs[passId]?.jiraTicketUrl || '');
                                                           return noteChanged || diagnosisChanged ? 'pointer' : 'not-allowed';
                                                         }
                                                         return noteChanged ? 'pointer' : 'not-allowed';
@@ -1642,7 +1749,8 @@ const AppInterface: React.FC<AppViewProps> = ({
                                                       if (!pass.success) {
                                                         const diagnosisChanged = 
                                                           (passDiagnoses.get(passId)?.symptom || '') !== (diagnosisInputs[passId]?.symptom || '') ||
-                                                          (passDiagnoses.get(passId)?.cause || '') !== (diagnosisInputs[passId]?.cause || '');
+                                                          (passDiagnoses.get(passId)?.cause || '') !== (diagnosisInputs[passId]?.cause || '') ||
+                                                          (passDiagnoses.get(passId)?.jira_ticket_url || '') !== (diagnosisInputs[passId]?.jiraTicketUrl || '');
                                                         hasChanges = noteChanged || diagnosisChanged;
                                                       }
                                                       if (hasChanges && !savingMetadata.has(passId) && !metadataSuccess.has(passId)) {
@@ -1657,7 +1765,8 @@ const AppInterface: React.FC<AppViewProps> = ({
                                                       if (!pass.success) {
                                                         const diagnosisChanged = 
                                                           (passDiagnoses.get(passId)?.symptom || '') !== (diagnosisInputs[passId]?.symptom || '') ||
-                                                          (passDiagnoses.get(passId)?.cause || '') !== (diagnosisInputs[passId]?.cause || '');
+                                                          (passDiagnoses.get(passId)?.cause || '') !== (diagnosisInputs[passId]?.cause || '') ||
+                                                          (passDiagnoses.get(passId)?.jira_ticket_url || '') !== (diagnosisInputs[passId]?.jiraTicketUrl || '');
                                                         hasChanges = noteChanged || diagnosisChanged;
                                                       }
                                                       if (hasChanges && !savingMetadata.has(passId) && !metadataSuccess.has(passId)) {

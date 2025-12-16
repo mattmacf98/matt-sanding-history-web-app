@@ -236,12 +236,12 @@ export class PassMetadataManager {
    * Save a diagnosis for a specific pass
    * If both symptom and cause are undefined/empty, deletes the diagnosis
    */
-  async savePassDiagnosis(passId: string, symptom?: string, cause?: string): Promise<void> {
-    console.log(`Saving diagnosis for pass ${passId}: symptom=${symptom}, cause=${cause}`);
+  async savePassDiagnosis(passId: string, symptom?: string, cause?: string, jiraTicketUrl?: string): Promise<void> {
+    console.log(`Saving diagnosis for pass ${passId}: symptom=${symptom}, cause=${cause}, jiraTicketUrl=${jiraTicketUrl}`);
 
-    // If both are empty, delete the diagnosis
-    if (!symptom && !cause) {
-      console.log('Both symptom and cause are empty - deleting diagnosis');
+    // If all are empty, delete the diagnosis
+    if (!symptom && !cause && !jiraTicketUrl) {
+      console.log('All diagnosis fields are empty - deleting diagnosis');
       await this.deletePassDiagnosis(passId);
       return;
     }
@@ -251,6 +251,7 @@ export class PassMetadataManager {
       pass_id: passId,
       symptom: symptom as PassDiagnosis['symptom'],
       cause: cause as PassDiagnosis['cause'],
+      jira_ticket_url: jiraTicketUrl,
       updated_at: now.toISOString(),
       updated_by: "summary-web-app"
     };

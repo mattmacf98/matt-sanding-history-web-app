@@ -66,6 +66,7 @@ export interface PassDiagnosis {
   pass_id: string;
   symptom?: Symptom;
   cause?: Cause;
+  jira_ticket_url?: string;
   updated_at: string;
   updated_by: string;
 }
