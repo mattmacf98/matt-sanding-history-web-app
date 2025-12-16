@@ -838,7 +838,7 @@ const AppInterface: React.FC<AppViewProps> = ({
                 </div>
               )}
 
-              <VideoStoreSelector onVideoStoreSelected={setVideoStoreClient} robotClient={robotClient} />
+              <VideoStoreSelector onVideoStoreSelected={setVideoStoreClient}/>
 
               <div className="video-store-selector">
                 <label htmlFor="camera-select" className="video-store-selector-label">
