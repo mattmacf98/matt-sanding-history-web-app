@@ -80,18 +80,7 @@ const PassFiles: React.FC<PassFilesProps> = ({
     const passStart = new Date(pass.start);
     const passEnd = new Date(pass.end);
 
-    const passTimeRangeFileIDS: string[] = binaryDataManager.getBinaryFileIdsInTimeRange(passStart, passEnd);
-
-    const passFileIDs: string[] = binaryDataManager.getBinaryFileIdsForPass(passId);
-
-    const ids = new Set([...passFileIDs, ...passTimeRangeFileIDS]);
-    return Array.from(binaryDataManager.binaryDataFiles)
-      .filter((x) => ids.has(x.binaryDataId))
-      .sort((a, b) => {
-        const timeA = a.timeRequested!.getTime();
-        const timeB = b.timeRequested!.getTime();
-        return timeA - timeB;
-      });
+    return binaryDataManager.getPassFiles(passId, passStart, passEnd);
   }, [pass, binaryDataManager]);
 
   const filteredPassFiles = useMemo(() => {
@@ -267,8 +256,8 @@ const PassFiles: React.FC<PassFilesProps> = ({
                       href={
                         `https://storage.cloud.google.com/viam-data-${organizationId}/` +
                         `${organizationId}/${machineId}/${partId}/files/` +
-                        `${file.metadata?.binaryDataId.split("/").pop()}` +
-                        `${file.metadata?.fileName}.gz`
+                        `${file.binaryDataId.split("/").pop()}` +
+                        `${file.fileName}.gz`
                       }
                       target="_blank"
                       style={{
@@ -894,7 +883,7 @@ const AppInterface: React.FC<AppViewProps> = ({
                 </div>
               )}
 
-              <VideoStoreSelector onVideoStoreSelected={setVideoStoreClient} />
+              <VideoStoreSelector onVideoStoreSelected={setVideoStoreClient}/>
 
               <div className="video-store-selector">
                 <label htmlFor="camera-select" className="video-store-selector-label">
@@ -1503,7 +1492,6 @@ const AppInterface: React.FC<AppViewProps> = ({
                                                   videoFiles={videoFiles}
                                                   fetchTimestamp={fetchTimestamp}
                                                   videoStoreClient={videoStoreClient}
-                                                  viamClient={viamClient}
                                                   fetchVideos={fetchVideos}
                                                 />
                                               </div>

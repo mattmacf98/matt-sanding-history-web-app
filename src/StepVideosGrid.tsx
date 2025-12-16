@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import * as VIAM from "@viamrobotics/sdk";
 import VideoModal from "./VideoModal";
-import { Step } from "./AppInterface";
+import { Step } from "./types";
 import { generateVideo } from "./lib/videoUtils";
 import { VideoPollingManager } from "./lib/videoPollingManager";
 
@@ -10,7 +10,6 @@ interface StepVideosGridProps {
   stepVideos: VIAM.dataApi.BinaryData[];
   videoFiles: Map<string, VIAM.dataApi.BinaryData>;
   videoStoreClient?: VIAM.GenericComponentClient | null;
-  viamClient: VIAM.ViamClient;
   step: Step;
   fetchVideos: (start: Date, shouldSetLoadingState: boolean) => Promise<void>;
   fetchTimestamp: Date | null;
@@ -20,7 +19,6 @@ const StepVideosGrid: React.FC<StepVideosGridProps> = ({
   stepVideos,
   videoFiles,
   videoStoreClient,
-  viamClient,
   step,
   fetchVideos,
   fetchTimestamp,
@@ -267,7 +265,6 @@ const StepVideosGrid: React.FC<StepVideosGridProps> = ({
       <VideoModal
         selectedVideo={selectedVideo}
         onClose={closeVideoModal}
-        viamClient={viamClient}
       />
     </>
   );
