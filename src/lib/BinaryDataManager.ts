@@ -1,14 +1,12 @@
 import { BinaryDataFile } from "./BinaryDataFile";
 
 export class BinaryDataManager {
-    private _dataIdToFile: Record<string, BinaryDataFile>;
-    private _fileNameToFile: Record<string, BinaryDataFile>;
     private _binaryDataFiles: BinaryDataFile[];
+    private _binaryDataByFileId: Record<string, BinaryDataFile>;
 
     constructor() {
-        this._dataIdToFile = {};
-        this._fileNameToFile = {};
         this._binaryDataFiles = [];
+        this._binaryDataByFileId = {};
     }
 
     get binaryDataFiles(): BinaryDataFile[] {
@@ -16,35 +14,33 @@ export class BinaryDataManager {
     }
 
     public addBinaryDataFile(file: BinaryDataFile) {
-        this._dataIdToFile[file.binaryDataId] = file;
-        this._fileNameToFile[file.fileName] = file;
         this._binaryDataFiles.push(file);
-    }
-
-    public getBinaryDataFileById(binaryDataId: string): BinaryDataFile | undefined {
-        return this._dataIdToFile[binaryDataId];
-    }
-
-    public getBinaryDataFileByFileName(fileName: string): BinaryDataFile | undefined {
-        return this._fileNameToFile[fileName];
+        this._binaryDataByFileId[file.binaryDataId] = file;
     }
 
     public searchBinaryDataByFileName(searchTerm: string): BinaryDataFile[] {
-        return Object.values(this._fileNameToFile).filter(file => file.fileName.includes(searchTerm));
+        return this._binaryDataFiles.filter(file => file.fileName.includes(searchTerm));
     }
 
-    public getBinaryFileIdsInTimeRange(start: Date, end: Date): string[] {
+    public getPassFiles(passId: string, start: Date, end: Date): BinaryDataFile[] {
+        const ids = new Set([...this._getBinaryFileIdsForPass(passId), ...this._getBinaryFileIdsInTimeRange(start, end)]);
+        return Array.from(ids.values())
+            .map(id => this._binaryDataByFileId[id])
+            .sort((a, b) => a.compareTo(b));
+    }
+
+    private _getBinaryFileIdsInTimeRange(start: Date, end: Date): string[] {
         const result: string[] = []
-        Object.values(this._dataIdToFile).forEach(file => {
+        this._binaryDataFiles.forEach(file => {
             if (!file.isInTimeRange(start, end)) return;
             result.push(file.binaryDataId);
         });
         return result;
     }
 
-    public getBinaryFileIdsForPass(passId: string): string[] {
+    private _getBinaryFileIdsForPass(passId: string): string[] {
         const result: string[] = []
-        Object.values(this._dataIdToFile).forEach(file => {
+        this._binaryDataFiles.forEach(file => {
             if (!file.isPartOfPass(passId)) return;
             result.push(file.binaryDataId);
         });

@@ -80,18 +80,7 @@ const PassFiles: React.FC<PassFilesProps> = ({
     const passStart = new Date(pass.start);
     const passEnd = new Date(pass.end);
 
-    const passTimeRangeFileIDS: string[] = binaryDataManager.getBinaryFileIdsInTimeRange(passStart, passEnd);
-
-    const passFileIDs: string[] = binaryDataManager.getBinaryFileIdsForPass(passId);
-
-    const ids = new Set([...passFileIDs, ...passTimeRangeFileIDS]);
-    return Array.from(binaryDataManager.binaryDataFiles)
-      .filter((x) => ids.has(x.binaryDataId))
-      .sort((a, b) => {
-        const timeA = a.timeRequested!.getTime();
-        const timeB = b.timeRequested!.getTime();
-        return timeA - timeB;
-      });
+    return binaryDataManager.getPassFiles(passId, passStart, passEnd);
   }, [pass, binaryDataManager]);
 
   const filteredPassFiles = useMemo(() => {

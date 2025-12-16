@@ -44,4 +44,8 @@ export class BinaryDataFile {
     public isPartOfPass(passId: string): boolean {
         return this.fileName.split("/").filter((fileNamePart) => fileNamePart === passId).length > 0;
     }
+
+    public compareTo(other: BinaryDataFile): number {
+        return this.timeRequested!.getTime() - other.timeRequested!.getTime();
+    }
 }
