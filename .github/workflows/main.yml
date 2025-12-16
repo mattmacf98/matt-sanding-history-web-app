@@ -28,7 +28,7 @@ jobs:
           npm ci
           npm run build
 
-      - name: Create Release Pull Request or Publish to npm
+      - name: Create Release Pull Request
         id: changesets
         uses: changesets/action@v1
         env:
@@ -36,6 +36,7 @@ jobs:
 
       - name: Create git tag if version changed
         run: |
+          git fetch --tags
           VERSION=$(node -p "require('./package.json').version")
           TAG="v$VERSION"
 
