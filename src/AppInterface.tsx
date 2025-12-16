@@ -838,7 +838,7 @@ const AppInterface: React.FC<AppViewProps> = ({
                 </div>
               )}
 
-              <VideoStoreSelector onVideoStoreSelected={setVideoStoreClient} />
+              <VideoStoreSelector onVideoStoreSelected={setVideoStoreClient} robotClient={robotClient} />
 
               <div className="video-store-selector">
                 <label htmlFor="camera-select" className="video-store-selector-label">
@@ -1447,7 +1447,6 @@ const AppInterface: React.FC<AppViewProps> = ({
                                                   videoFiles={videoFiles}
                                                   fetchTimestamp={fetchTimestamp}
                                                   videoStoreClient={videoStoreClient}
-                                                  viamClient={viamClient}
                                                   fetchVideos={fetchVideos}
                                                 />
                                               </div>
