@@ -1,1 +1,0 @@
-export const SNAPSHOT_FILE_NAME_PREFIX = "snapshot_";
