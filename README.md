@@ -13,19 +13,21 @@ A basic React TypeScript application with minimal dependencies that displays a l
 ## Getting Started
 
 1. Install dependencies:
+
    ```bash
    npm install
    ```
 
 2. Start the development server:
+
    ```bash
    npm run dev
    ```
 
 3. Start the viam proxy:
-    ```bash
-    viam module local-app-testing --app-url http://localhost:3000 --machine-id <machine-id>
-    ```
+   ```bash
+   viam module local-app-testing --app-url http://localhost:3000 --machine-id <machine-id>
+   ```
 
 ## Available Scripts
 
@@ -53,3 +55,7 @@ A basic React TypeScript application with minimal dependencies that displays a l
 - TypeScript 5.0.0
 - @vitejs/plugin-react 4.0.0
 - Type definitions for React, React DOM, React Router DOM, and js-cookie
+
+# Making Changes
+
+When making a change to this repo, please run `npx @changesets/cli` to properly update the package.json using semantic versioning.
