@@ -999,7 +999,7 @@ const AppInterface: React.FC<AppViewProps> = ({
                                     {symptomCounts.size > 0 ? (
                                       Array.from(symptomCounts.entries())
                                         .sort((a, b) => b[1] - a[1])
-                                        .map(([symptom, count], idx) => (
+                                        .map(([symptom, count]) => (
                                           <div key={symptom}>
                                             {symptom}: {count}
                                           </div>
@@ -1015,7 +1015,7 @@ const AppInterface: React.FC<AppViewProps> = ({
                                     {causeCounts.size > 0 ? (
                                       Array.from(causeCounts.entries())
                                         .sort((a, b) => b[1] - a[1])
-                                        .map(([cause, count], idx) => (
+                                        .map(([cause, count]) => (
                                           <div key={cause}>
                                             {cause}: {count}
                                           </div>
