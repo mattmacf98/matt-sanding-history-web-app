@@ -6,7 +6,6 @@ import { useViamClients } from './ViamClientContext';
 const STORAGE_KEY = 'selectedVideoStore';
 
 interface VideoStoreSelectorProps {
-  robotClient: VIAM.RobotClient | null;
   onVideoStoreSelected: (client: VIAM.GenericComponentClient | null) => void;
 }
 
