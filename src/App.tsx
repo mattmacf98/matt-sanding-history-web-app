@@ -1,25 +1,24 @@
 import { useEffect, useState } from 'react';
 import * as VIAM from "@viamrobotics/sdk";
 import AppInterface from './AppInterface';
-import Cookies from "js-cookie";
 import { JsonValue } from '@viamrobotics/sdk';
 import { Pass, PassNote, PassDiagnosis } from './types';
 import { Timestamp } from '@bufbuild/protobuf';
+
 import { getPassMetadataManager } from './lib/passMetadataManager';
+import { useViamClients } from './ViamClientContext';
 
 const sandingSummaryName = "sanding-summary";
 const sandingSummaryComponentType = "rdk:component:sensor";
-const locationIdRegex = /main\.([^.]+)\.viam\.cloud/;
-const machineNameRegex = /\/machine\/(.+?)-main\./;
 const BATCH_SIZE = 100;
 
 function App() {
+  const { locationId, machineId, machineName, organizationId, viamClient } = useViamClients();
+
   const [passSummaries, setPassSummaries] = useState<Pass[]>([]);
   const [files, setFiles] = useState<Map<string, VIAM.dataApi.BinaryData>>(new Map());
   const [videoFiles, setVideoFiles] = useState<Map<string, VIAM.dataApi.BinaryData>>(new Map());
   const [imageFiles, setImageFiles] = useState<Map<string, VIAM.dataApi.BinaryData>>(new Map());
-  const [viamClient, setViamClient] = useState<VIAM.ViamClient | null>(null);
-  const [robotClient, setRobotClient] = useState<VIAM.RobotClient | null>(null);
   const [fetchTimestamp, setFetchTimestamp] = useState<Date | null>(null);
   const [partId, setPartId] = useState<string>('');
   const [passNotes, setPassNotes] = useState<Map<string, PassNote[]>>(new Map());
@@ -28,23 +27,7 @@ function App() {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 7; // 7 days per page
 
-  const machineNameMatch = window.location.pathname.match(machineNameRegex);
-  const machineName = machineNameMatch ? machineNameMatch[1] : null;
-
-  const locationIdMatch = window.location.pathname.match(locationIdRegex);
-  const locationId = locationIdMatch ? locationIdMatch[1] : null;
-
-  const machineInfo = window.location.pathname.split("/")[2];
-
-  const {
-    apiKey: { id: apiKeyId, key: apiKeySecret },
-    machineId,
-    hostname,
-  } = JSON.parse(Cookies.get(machineInfo)!);
-
   const fetchFiles = async (start: Date, shouldSetLoadingState: boolean = true) => {
-    if (!viamClient) return;
-
     const end = new Date();
 
     console.log("Fetching for time range:", start, end);
@@ -142,31 +125,6 @@ function App() {
     const fetchPasses = async () => {
       console.log("Fetching data start");
 
-      const viamClient = await connect(apiKeyId, apiKeySecret);
-      setViamClient(viamClient);
-
-      try {
-        const robotClient = await viamClient.connectToMachine({
-          host: hostname,
-          id: machineId,
-        });
-        setRobotClient(robotClient);
-      } catch (error) {
-        console.error('Failed to create robot client:', error);
-        setRobotClient(null);
-      }
-
-      const organizations = await viamClient.appClient.listOrganizations();
-      console.log("Organizations:", organizations);
-      if (organizations.length !== 1) {
-        console.warn("expected 1 organization, got " + organizations.length);
-        return;
-      }
-      const orgID = organizations[0].id;
-
-      console.log("machineId:", machineId);
-      console.log("orgID:", orgID);
-
       // batched fetching of pass summaries
       let allTabularData: any[] = [];
       let hasMoreData = true;
@@ -176,7 +134,7 @@ function App() {
         const baseQuery: Record<string, JsonValue>[] = [
           {
             $match: {
-              organization_id: orgID,
+              organization_id: organizationId,
               location_id: locationId,
               component_name: sandingSummaryName,
               robot_id: machineId,
@@ -206,7 +164,7 @@ function App() {
         ];
 
         console.log(`Fetching batch of sanding summaries${oldestTimeReceived ? ' older than ' + new Date(oldestTimeReceived).toISOString() : ''}`);
-        const batchData = await viamClient.dataClient.tabularDataByMQL(orgID, mqlQuery);
+        const batchData = await viamClient.dataClient.tabularDataByMQL(organizationId, mqlQuery);
         console.log(`Received ${batchData.length} records in batch`);
 
         // If we have data, process it
@@ -300,7 +258,7 @@ function App() {
     };
 
     fetchPasses();
-  }, [apiKeyId, apiKeySecret, hostname, machineId, locationId]);
+  }, [locationId, machineId, organizationId, viamClient]);
 
 
   // Fetch videos when passSummaries and viamClient are available
@@ -343,12 +301,10 @@ function App() {
   return (
     <AppInterface
       machineName={machineName}
-      viamClient={viamClient!}
       passSummaries={currentPassSummaries}
       files={files}
       videoFiles={videoFiles}
       imageFiles={imageFiles}
-      robotClient={robotClient}
       fetchVideos={fetchFiles}
       fetchTimestamp={fetchTimestamp}
       machineId={machineId}
@@ -370,19 +326,6 @@ function App() {
       }}
     />
   );
-}
-
-async function connect(apiKeyId: string, apiKeySecret: string): Promise<VIAM.ViamClient> {
-  const opts: VIAM.ViamClientOptions = {
-    serviceHost: "https://app.viam.com",
-    credentials: {
-      type: "api-key",
-      authEntity: apiKeyId,
-      payload: apiKeySecret,
-    },
-  };
-
-  return await VIAM.createViamClient(opts);
 }
 
 export default App;

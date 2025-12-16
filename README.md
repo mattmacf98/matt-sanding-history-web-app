@@ -35,8 +35,9 @@ A basic React TypeScript application with minimal dependencies that displays a l
 
 ## Project Structure
 
-- `src/App.tsx` - Main application component
-- `src/components/StringList.tsx` - Component that renders a list of strings
+- `src/Root.tsx` - Sets up routing and Viam client context
+- `src/App.tsx` - Fetches sanding pass data
+- `src/AppInterface.tsx` - Main UI component for displaying sanding history
 - `src/index.tsx` - Application entry point
 - `index.html` - HTML template
 - `vite.config.ts` - Vite configuration
@@ -45,6 +46,10 @@ A basic React TypeScript application with minimal dependencies that displays a l
 
 - React 18.2.0
 - React DOM 18.2.0
+- React Router DOM 7.10.1
+- @viamrobotics/sdk 0.57.0
+- js-cookie 3.0.5
 - Vite 4.4.0
 - TypeScript 5.0.0
-- Type definitions for React and React DOM
+- @vitejs/plugin-react 4.0.0
+- Type definitions for React, React DOM, React Router DOM, and js-cookie

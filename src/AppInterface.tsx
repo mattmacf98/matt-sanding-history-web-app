@@ -1,5 +1,7 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import * as VIAM from "@viamrobotics/sdk";
+
+import { useViamClients } from './ViamClientContext';
 import './AppInterface.css';
 import StepVideosGrid from './StepVideosGrid';
 import VideoStoreSelector from './VideoStoreSelector';
@@ -19,10 +21,16 @@ import {
   getPassConfigComparison,
 } from './lib/configUtils';
 import { Pass, PassNote, PassDiagnosis, Step, RobotConfigMetadata, SYMPTOM_OPTIONS, CAUSE_OPTIONS } from './types';
+import Button from './components/Button';
+import RenderIf from './components/RenderIf';
+import { BinaryDataManager } from './lib/BinaryDataManager';
+import { BinaryDataFile } from './lib/BinaryDataFile';
+import { SNAPSHOT_FILE_NAME_PREFIX } from './lib/constants';
+
 
 interface PassFilesProps {
   pass: Pass;
-  files: Map<string, VIAM.dataApi.BinaryData>;
+  binaryDataManager: BinaryDataManager;
   viamClient: VIAM.ViamClient;
   fetchTimestamp: Date | null;
   expandedFiles: Set<string>;
@@ -30,19 +38,22 @@ interface PassFilesProps {
   fileSearchInputs: Record<string, string>;
   handleFileSearchChange: (passId: string, value: string) => void;
   debouncedFileSearchInputs: Record<string, string>;
+  partId: string;
 }
 
 const PassFiles: React.FC<PassFilesProps> = ({
   pass,
-  files,
-  viamClient,
+  binaryDataManager,
   fetchTimestamp,
   expandedFiles,
   toggleFilesExpansion,
   fileSearchInputs,
   handleFileSearchChange,
   debouncedFileSearchInputs,
+  partId,
 }) => {
+  const { machineId, organizationId, viamClient } = useViamClients();
+
   const passId = pass.pass_id;
 
   const handleDownload = async (file: VIAM.dataApi.BinaryData) => {
@@ -69,42 +80,27 @@ const PassFiles: React.FC<PassFilesProps> = ({
     const passStart = new Date(pass.start);
     const passEnd = new Date(pass.end);
 
-    const passTimeRangeFileIDS: string[] = [];
-    files.forEach((file, binaryDataId) => {
-      if (file.metadata?.timeRequested) {
-        const fileTime = file.metadata.timeRequested.toDate();
-        if (fileTime >= passStart && fileTime <= passEnd) {
-          passTimeRangeFileIDS.push(binaryDataId);
-        }
-      }
-    });
+    const passTimeRangeFileIDS: string[] = binaryDataManager.getBinaryFileIdsInTimeRange(passStart, passEnd);
 
-    const passFileIDs: string[] = [];
-    if (pass.pass_id && pass.pass_id.trim() !== '') {
-      files.forEach((file, binaryDataId) => {
-        if (file.metadata?.fileName && file.metadata.fileName.split("/").filter((y) => y === pass.pass_id).length > 0) {
-          passFileIDs.push(binaryDataId);
-        }
-      });
-    }
+    const passFileIDs: string[] = binaryDataManager.getBinaryFileIdsForPass(passId);
 
     const ids = new Set([...passFileIDs, ...passTimeRangeFileIDS]);
-    return Array.from(files.values())
-      .filter((x) => ids.has(x.metadata!.binaryDataId))
+    return Array.from(binaryDataManager.binaryDataFiles)
+      .filter((x) => ids.has(x.binaryDataId))
       .sort((a, b) => {
-        const timeA = a.metadata!.timeRequested!.toDate().getTime();
-        const timeB = b.metadata!.timeRequested!.toDate().getTime();
+        const timeA = a.timeRequested!.getTime();
+        const timeB = b.timeRequested!.getTime();
         return timeA - timeB;
       });
-  }, [pass, files]);
+  }, [pass, binaryDataManager]);
 
   const filteredPassFiles = useMemo(() => {
     const searchTerm = (debouncedFileSearchInputs[passId] || '').toLowerCase();
     if (!searchTerm) return passFiles;
 
     return passFiles.filter(file => {
-      const fileName = file.metadata?.fileName?.split('/').pop()?.toLowerCase() || '';
-      const fullPath = file.metadata?.fileName?.toLowerCase() || '';
+      const fileName = file.fileName.split('/').pop()?.toLowerCase() || '';
+      const fullPath = file.fileName.toLowerCase() || '';
       return fileName.includes(searchTerm) || fullPath.includes(searchTerm);
     });
   }, [passFiles, debouncedFileSearchInputs, passId]);
@@ -196,7 +192,8 @@ const PassFiles: React.FC<PassFilesProps> = ({
           }}>
             {filteredPassFiles
               .map((file, fileIndex, filteredFiles) => {
-                const fileName = file.metadata?.fileName?.split('/').pop() || 'Unknown file';
+
+                const fileName = file.fileName.split('/').pop() || 'Unknown file';
 
                 return (
                   <div
@@ -230,7 +227,7 @@ const PassFiles: React.FC<PassFilesProps> = ({
                         overflow: 'hidden',
                         whiteSpace: 'nowrap',
                         flex: 1
-                      }} title={file.metadata?.fileName || fileName}>
+                      }} title={file.fileName || fileName}>
                         {fileName}
                       </span>
                       <span style={{
@@ -239,7 +236,7 @@ const PassFiles: React.FC<PassFilesProps> = ({
                         whiteSpace: 'nowrap',
                         flexShrink: 0
                       }}>
-                        {file.metadata?.timeRequested?.toDate().toLocaleTimeString() || ''}
+                        {file.timeRequested?.toLocaleTimeString() || ''}
                       </span>
                     </div>
                     <a
@@ -247,7 +244,7 @@ const PassFiles: React.FC<PassFilesProps> = ({
                       onClick={(e) => {
                         e.preventDefault();
                         e.stopPropagation();
-                        handleDownload(file);
+                        handleDownload(file.binaryData);
                       }}
                       style={{
                         marginLeft: '12px',
@@ -265,6 +262,27 @@ const PassFiles: React.FC<PassFilesProps> = ({
                       }}
                     >
                       Download
+                    </a>
+                    <a
+                      href={
+                        `https://storage.cloud.google.com/viam-data-${organizationId}/` +
+                        `${organizationId}/${machineId}/${partId}/files/` +
+                        `${file.metadata?.binaryDataId.split("/").pop()}` +
+                        `${file.metadata?.fileName}.gz`
+                      }
+                      target="_blank"
+                      style={{
+                        marginLeft: '12px',
+                        padding: '6px 8px',
+                        backgroundColor: '#1d4ed8',
+                        color: 'white',
+                        borderRadius: '4px',
+                        fontSize: '12px',
+                        border: 'none',
+                        textDecoration: 'none'
+                      }}
+                    >
+                      Download from GCS
                     </a>
                   </div>
                 );
@@ -296,8 +314,6 @@ interface AppViewProps {
   files: Map<string, VIAM.dataApi.BinaryData>;
   videoFiles: Map<string, VIAM.dataApi.BinaryData>;
   imageFiles: Map<string, VIAM.dataApi.BinaryData>;
-  viamClient: VIAM.ViamClient;
-  robotClient?: VIAM.RobotClient | null;
   fetchVideos: (start: Date) => Promise<void>;
   machineName: string | null;
   fetchTimestamp: Date | null;
@@ -322,12 +338,10 @@ interface AppViewProps {
 
 const AppInterface: React.FC<AppViewProps> = ({
   machineName,
-  viamClient,
   passSummaries = [],
   files,
   videoFiles,
   imageFiles,
-  robotClient,
   fetchVideos,
   fetchTimestamp,
   machineId,
@@ -339,6 +353,8 @@ const AppInterface: React.FC<AppViewProps> = ({
   fetchingNotes,
   pagination,
 }) => {
+  const { robotClient, viamClient } = useViamClients();
+
   const [activeRoute, setActiveRoute] = useState('live');
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
   const [videoStoreClient, setVideoStoreClient] = useState<VIAM.GenericComponentClient | null>(null);
@@ -365,6 +381,15 @@ const AppInterface: React.FC<AppViewProps> = ({
   // Combined saving state for notes + diagnosis
   const [savingMetadata, setSavingMetadata] = useState<Set<string>>(new Set());
   const [metadataSuccess, setMetadataSuccess] = useState<Set<string>>(new Set());
+  const binaryDataManger = useRef<BinaryDataManager>(new BinaryDataManager());
+
+
+  useEffect(() => {
+    binaryDataManger.current = new BinaryDataManager();
+    Array.from(files.values()).forEach((file) => {
+      binaryDataManger.current?.addBinaryDataFile(new BinaryDataFile(file));
+    });
+  }, [files]);
 
   // Debounce file search inputs
   useEffect(() => {
@@ -475,7 +500,7 @@ const AppInterface: React.FC<AppViewProps> = ({
   };
 
   const savePassMetadata = async (passId: string, isFailedPass: boolean) => {
-    if (!viamClient || !passId || !partId) return;
+    if (!passId || !partId) return;
 
     const noteText = noteInputs[passId]?.trim() || '';
     const diagnosisData = diagnosisInputs[passId] || {};
@@ -712,7 +737,7 @@ const AppInterface: React.FC<AppViewProps> = ({
   };
 
   const fetchConfigMetadata = async (pass: Pass, prevPass: Pass | null) => {
-    if (!viamClient || !partId) return;
+    if (!partId) return;
 
     const passId = pass.pass_id;
     const prevPassId = prevPass?.pass_id;
@@ -788,7 +813,7 @@ const AppInterface: React.FC<AppViewProps> = ({
   };
 
   const handleDownloadConfig = async (pass: Pass) => {
-    if (!viamClient || !partId) {
+    if (!partId) {
       alert('Unable to download config: missing required information');
       return;
     }
@@ -869,10 +894,7 @@ const AppInterface: React.FC<AppViewProps> = ({
                 </div>
               )}
 
-              <VideoStoreSelector
-                robotClient={robotClient || null}
-                onVideoStoreSelected={setVideoStoreClient}
-              />
+              <VideoStoreSelector onVideoStoreSelected={setVideoStoreClient} />
 
               <div className="video-store-selector">
                 <label htmlFor="camera-select" className="video-store-selector-label">
@@ -1423,7 +1445,7 @@ const AppInterface: React.FC<AppViewProps> = ({
                                                       style={{ marginTop: "12px", width: "100%", overflow: "hidden" }}
                                                       onClick={() => openBeforeAfterModal(beforeImage, afterImage)}
                                                     >
-                                                      <ImageDisplay binaryData={beforeImage} viamClient={viamClient} />
+                                                      <ImageDisplay binaryData={beforeImage} />
                                                     </div>
                                                   </div>
                                                 )}
@@ -1447,7 +1469,7 @@ const AppInterface: React.FC<AppViewProps> = ({
                                                       style={{ marginTop: "12px", width: "100%", overflow: "hidden" }}
                                                       onClick={() => openBeforeAfterModal(beforeImage, afterImage)}
                                                     >
-                                                      <ImageDisplay binaryData={afterImage} viamClient={viamClient} />
+                                                      <ImageDisplay binaryData={afterImage} />
                                                     </div>
                                                   </div>
                                                 )}
@@ -1487,6 +1509,21 @@ const AppInterface: React.FC<AppViewProps> = ({
                                               </div>
                                             );
                                           })}
+                                          <RenderIf condition={binaryDataManger.current.searchBinaryDataByFileName(SNAPSHOT_FILE_NAME_PREFIX).length > 0}>
+                                            <div className="step-card">
+                                              <div className="step-name">View Snapshot</div>
+                                              <p>
+                                                Load and display a 3D scene from a snapshot file.
+                                                </p>
+                                                <div style={{ display: "flex", justifyContent: "center", alignItems: "center" }}>
+                                                  <Button>
+                                                    View
+                                                  </Button>
+                                                </div>
+                                            </div>
+                                          </RenderIf>
+                                          
+                                          
                                         </div>
 
                                         {/* Diagnosis and Notes Section - shows for all passes, diagnosis fields only for failed */}
@@ -1777,7 +1814,7 @@ const AppInterface: React.FC<AppViewProps> = ({
                                           <div style={{ flex: '2 1 0%', minWidth: 0 }}>
                                             <PassFiles
                                               pass={pass}
-                                              files={files}
+                                              binaryDataManager={binaryDataManger.current!}
                                               viamClient={viamClient}
                                               fetchTimestamp={fetchTimestamp}
                                               expandedFiles={expandedFiles}
@@ -1785,6 +1822,7 @@ const AppInterface: React.FC<AppViewProps> = ({
                                               fileSearchInputs={fileSearchInputs}
                                               handleFileSearchChange={handleFileSearchChange}
                                               debouncedFileSearchInputs={debouncedFileSearchInputs}
+                                              partId={partId}
                                             />
                                           </div>
                                         </div>
@@ -1879,7 +1917,6 @@ const AppInterface: React.FC<AppViewProps> = ({
           beforeImage={beforeAfterModal.beforeImage}
           afterImage={beforeAfterModal.afterImage}
           onClose={closeBeforeAfterModal}
-          viamClient={viamClient}
         />
       )}
 
