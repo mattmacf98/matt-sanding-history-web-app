@@ -47,7 +47,7 @@ export const getBeforeAfterImages = (
 export const getStepVideos = (step: Step, videoFiles: Map<string, VIAM.dataApi.BinaryData>): VIAM.dataApi.BinaryData[] => {
   if (!videoFiles || videoFiles.size === 0) return [];
 
-  let stepVideos: VIAM.dataApi.BinaryData[] = [];
+  const stepVideos: VIAM.dataApi.BinaryData[] = [];
 
   videoFiles.forEach((file) => {
     if (!file.metadata || !file.metadata.fileName) return;

@@ -35,7 +35,7 @@ function App() {
       setFetchTimestamp(start);
     }
 
-    let filter = {
+    const filter = {
       robotId: machineId,
       interval: {
         start: Timestamp.fromDate(start),
@@ -47,7 +47,7 @@ function App() {
 
     // Process files in batches
     while (true) {
-      let binaryData = await viamClient.dataClient.binaryDataByFilter(
+      const binaryData = await viamClient.dataClient.binaryDataByFilter(
         filter,
         1000,
         VIAM.dataApi.Order.DESCENDING,
