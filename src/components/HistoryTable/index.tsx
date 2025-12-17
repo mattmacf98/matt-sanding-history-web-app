@@ -1,389 +1,86 @@
-import React, { useState, useMemo, useEffect, useRef } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { CAUSE_OPTIONS, Pass, PassDiagnosis, PassNote, RobotConfigMetadata, Step, SYMPTOM_OPTIONS } from '../../lib/types';
+import { downloadRobotConfig, getPassConfigComparison, getRobotConfigAtTime } from '../../lib/configUtils';
+import { useViamClients } from '../../lib/contexts/ViamClientContext';
+import { formatDurationMs } from '../../lib/uiUtils';
+import { StatusBadge } from '../StatusBadge';
+import { formatDurationToMinutesSeconds, formatTimeDifference } from '../../lib/videoUtils';
+import { getBeforeAfterImages, getStepVideos } from '../../lib/passUtils';
 import * as VIAM from "@viamrobotics/sdk";
+import ImageDisplay from '../ImageDisplay';
+import StepVideosGrid from '../StepVideosGrid';
+import { getPassMetadataManager } from '../../lib/passMetadataManager';
+import { PassFiles } from './PassFiles';
+import RenderIf from '../RenderIf';
+import { SNAPSHOT_FILE_NAME_PREFIX } from '../../lib/constants';
+import Button from '../Button';
+import { BinaryDataManager } from '../../lib/BinaryDataManager';
+import { BinaryDataFile } from '../../lib/BinaryDataFile';
 
-import { useViamClients } from './lib/contexts/ViamClientContext';
-import './AppInterface.css';
-import StepVideosGrid from './components/StepVideosGrid';
-import VideoStoreSelector from './components/VideoStoreSelector';
-import ImageDisplay from './components/ImageDisplay';
-import BeforeAfterModal from './components/BeforeAfterModal';
-import GlobalLoadingIndicator from './components/GlobalLoadingIndicator';
-import {
-  formatDurationToMinutesSeconds,
-  formatTimeDifference,
-} from './lib/videoUtils';
-import { getBeforeAfterImages, getStepVideos } from './lib/passUtils';
-import { formatDurationMs } from './lib/uiUtils';
-import { getPassMetadataManager } from './lib/passMetadataManager';
-import {
-  getRobotConfigAtTime,
-  downloadRobotConfig,
-  getPassConfigComparison,
-} from './lib/configUtils';
-import { Pass, PassNote, PassDiagnosis, Step, RobotConfigMetadata, SYMPTOM_OPTIONS, CAUSE_OPTIONS } from './lib/types';
-import Button from './components/Button';
-import RenderIf from './components/RenderIf';
-import { BinaryDataManager } from './lib/BinaryDataManager';
-import { BinaryDataFile } from './lib/BinaryDataFile';
-import { SNAPSHOT_FILE_NAME_PREFIX } from './lib/constants';
-
-
-interface PassFilesProps {
-  pass: Pass;
-  binaryDataManager: BinaryDataManager;
-  viamClient: VIAM.ViamClient;
-  fetchTimestamp: Date | null;
-  expandedFiles: Set<string>;
-  toggleFilesExpansion: (passId: string) => void;
-  fileSearchInputs: Record<string, string>;
-  handleFileSearchChange: (passId: string, value: string) => void;
-  debouncedFileSearchInputs: Record<string, string>;
-  partId: string;
+interface HistoryTableProps {
+    partId: string; //TODO: can thes just be grabbed from the viam context?
+    machineId: string;
+    passSummaries?: any[];
+    fetchingNotes: boolean;
+    passNotes: Map<string, PassNote[]>; // TODO: notes and diagnosis contexts?
+    passDiagnoses: Map<string, PassDiagnosis>;
+    onNotesUpdate: React.Dispatch<React.SetStateAction<Map<string, PassNote[]>>>;
+    onDiagnosesUpdate: React.Dispatch<React.SetStateAction<Map<string, PassDiagnosis>>>;
+    selectedCamera: string; //TODO: context for this
+    videoStoreClient: VIAM.GenericComponentClient | null; //TODO: context for this
+    setBeforeAfterModal: (modal: { beforeImage: VIAM.dataApi.BinaryData | null, afterImage: VIAM.dataApi.BinaryData | null }) => void; // TODO: context for this
+    imageFiles: Map<string, VIAM.dataApi.BinaryData>; //TODO: structure files using a binaryDataManger with functions instead of 3 maps
+    videoFiles: Map<string, VIAM.dataApi.BinaryData>;
+    files: Map<string, VIAM.dataApi.BinaryData>;
+    fetchTimestamp: Date | null;
+    fetchVideos: (start: Date) => Promise<void>;
 }
 
-const PassFiles: React.FC<PassFilesProps> = ({
-  pass,
-  binaryDataManager,
-  fetchTimestamp,
-  expandedFiles,
-  toggleFilesExpansion,
-  fileSearchInputs,
-  handleFileSearchChange,
-  debouncedFileSearchInputs,
-  partId,
+const HistoryTable: React.FC<HistoryTableProps> = ({
+    partId,
+    machineId,
+    passSummaries = [],
+    fetchingNotes,
+    passNotes,
+    passDiagnoses,
+    onNotesUpdate,
+    onDiagnosesUpdate,
+    selectedCamera,
+    videoStoreClient,
+    setBeforeAfterModal,
+    imageFiles,
+    videoFiles,
+    fetchTimestamp,
+    fetchVideos,
+    files,
 }) => {
-  const { machineId, organizationId, viamClient } = useViamClients();
+    const { viamClient } = useViamClients();
 
-  const passId = pass.pass_id;
+    const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
+    const [noteInputs, setNoteInputs] = useState<Record<string, string>>({});
+    const [fileSearchInputs, setFileSearchInputs] = useState<Record<string, string>>({});
+    const [downloadingConfigs, setDownloadingConfigs] = useState<Set<string>>(new Set());
+    const [expandedFiles, setExpandedFiles] = useState<Set<string>>(new Set());
+    const [configMetadata, setConfigMetadata] = useState<Map<string, RobotConfigMetadata>>(new Map());
+    const [loadingConfigMetadata, setLoadingConfigMetadata] = useState<Set<string>>(new Set());
+    const [expandedErrors, setExpandedErrors] = useState<Set<string>>(new Set());
+    const [diagnosisInputs, setDiagnosisInputs] = useState<Record<string, { symptom?: string; cause?: string; jiraTicketUrl?: string }>>({});
+    const [metadataSuccess, setMetadataSuccess] = useState<Set<string>>(new Set());
+    const [savingMetadata, setSavingMetadata] = useState<Set<string>>(new Set());
+    const [debouncedFileSearchInputs, setDebouncedFileSearchInputs] = useState<Record<string, string>>({});
+    const [jiraValidationErrors, setJiraValidationErrors] = useState<Record<string, string>>({});
+    const binaryDataManager = useRef<BinaryDataManager>(new BinaryDataManager());
 
-  const handleDownload = async (file: VIAM.dataApi.BinaryData) => {
-    try {
-      const data = await viamClient.dataClient.binaryDataByIds([file.metadata!.binaryDataId]);
-      if (data.length > 0) {
-        const blob = new Blob([new Uint8Array(data[0].binary)]);
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = file.metadata?.fileName?.split('/').pop() || 'download';
-        document.body.appendChild(a);
-        a.click();
-        window.URL.revokeObjectURL(url);
-        document.body.removeChild(a);
-      }
-    } catch (error) {
-      console.error('Error downloading file:', error);
-      alert('Failed to download file');
-    }
-  };
+    useEffect(() => {
+        binaryDataManager.current = new BinaryDataManager();
+        Array.from(files.values()).forEach((file) => {
+            binaryDataManager.current?.addBinaryDataFile(new BinaryDataFile(file));
+        });
+    }, [files]);
 
-  const passFiles = useMemo(() => {
-    const passStart = new Date(pass.start);
-    const passEnd = new Date(pass.end);
-
-    return binaryDataManager.getPassFiles(passId, passStart, passEnd);
-  }, [pass, binaryDataManager]);
-
-  const filteredPassFiles = useMemo(() => {
-    const searchTerm = (debouncedFileSearchInputs[passId] || '').toLowerCase();
-    if (!searchTerm) return passFiles;
-
-    return passFiles.filter(file => {
-      const fileName = file.fileName.split('/').pop()?.toLowerCase() || '';
-      const fullPath = file.fileName.toLowerCase() || '';
-      return fileName.includes(searchTerm) || fullPath.includes(searchTerm);
-    });
-  }, [passFiles, debouncedFileSearchInputs, passId]);
-
-  const filesCountDisplay = useMemo(() => {
-    const searchTerm = (debouncedFileSearchInputs[passId] || '').toLowerCase();
-    if (searchTerm) {
-      return `(showing ${filteredPassFiles.length} of ${passFiles.length})`;
-    }
-    return `(${passFiles.length})`;
-  }, [passFiles.length, filteredPassFiles.length, debouncedFileSearchInputs, passId]);
-
-  const isLoading = fetchTimestamp && fetchTimestamp > pass.start;
-
-  if (isLoading && passFiles.length === 0) {
-    return (
-      <div className="pass-files-section" style={{}}>
-        <span style={{
-          display: 'inline-block',
-          width: '28px',
-          height: '28px',
-          border: '3px solid rgba(59, 130, 246, 0.2)',
-          borderTopColor: '#3b82f6',
-          borderRadius: '50%',
-          animation: 'spin 1s linear infinite'
-        }}></span>
-        <p style={{ marginTop: '12px', color: '#6b7280', fontSize: '14px' }}>
-          Loading files...
-        </p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="pass-files-section">
-      <h4
-        onClick={() => toggleFilesExpansion(passId)}
-        style={{
-          cursor: 'pointer',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '6px',
-          userSelect: 'none',
-          paddingLeft: '2px'
-        }}
-      >
-        <span style={{
-          display: 'inline-block',
-          transition: 'transform 0.2s',
-          transform: expandedFiles.has(passId) ? 'rotate(90deg)' : 'rotate(0deg)',
-          fontSize: '10px'
-        }}>
-          ▶
-        </span>
-        Files captured during this pass {filesCountDisplay}
-      </h4>
-
-      {expandedFiles.has(passId) && passFiles.length > 0 && (
-        <>
-          <div style={{ marginTop: '8px', marginLeft: '12px', marginBottom: '8px' }}>
-            <input
-              type="text"
-              placeholder="Search files by filename..."
-              value={fileSearchInputs[passId] || ''}
-              onChange={(e) => handleFileSearchChange(passId, e.target.value)}
-              onClick={(e) => e.stopPropagation()}
-              style={{
-                width: 'fit-content',
-                minWidth: '250px',
-                maxWidth: '400px',
-                padding: '6px 10px',
-                fontSize: '13px',
-                border: '1px solid #e5e7eb',
-                borderRadius: '4px',
-                boxSizing: 'border-box',
-                backgroundColor: '#ffffff'
-              }}
-            />
-          </div>
-          <div style={{
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '0',
-            overflowY: 'auto',
-            maxHeight: '33dvh',
-            overflow: 'auto',
-            borderTop: '1px solid #e5e7eb',
-            margin: '0 0 0 0.5rem'
-          }}>
-            {filteredPassFiles
-              .map((file, fileIndex, filteredFiles) => {
-
-                const fileName = file.fileName.split('/').pop() || 'Unknown file';
-
-                return (
-                  <div
-                    key={fileIndex}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      padding: '4px 6px',
-                      backgroundColor: '#f9fafb',
-                      borderBottom: fileIndex < filteredFiles.length - 1 ? '1px solid #e5e7eb' : 'none',
-                      fontSize: '13px',
-                      minWidth: '280px',
-                      boxSizing: 'border-box',
-                      transition: 'background-color 0.2s'
-                    }}
-                    onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#f3f4f6'; }}
-                    onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = '#f9fafb'; }}
-                  >
-                    <div style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '8px',
-                      flex: 1,
-                      minWidth: 0,
-                      overflow: 'hidden'
-                    }}>
-                      <span style={{
-                        color: '#374151',
-                        textOverflow: 'ellipsis',
-                        overflow: 'hidden',
-                        whiteSpace: 'nowrap',
-                        flex: 1
-                      }} title={file.fileName || fileName}>
-                        {fileName}
-                      </span>
-                      <span style={{
-                        color: '#9ca3af',
-                        fontSize: '12px',
-                        whiteSpace: 'nowrap',
-                        flexShrink: 0
-                      }}>
-                        {file.timeRequested?.toLocaleTimeString() || ''}
-                      </span>
-                    </div>
-                    <a
-                      href="#"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        handleDownload(file.binaryData);
-                      }}
-                      style={{
-                        marginLeft: '12px',
-                        padding: '6px 8px',
-                        backgroundColor: '#3b82f6',
-                        color: 'white',
-                        borderRadius: '4px',
-                        textDecoration: 'none',
-                        fontSize: '12px',
-                        whiteSpace: 'nowrap',
-                        flexShrink: 0,
-                        cursor: 'pointer',
-                        display: 'inline-block',
-                        border: 'none'
-                      }}
-                    >
-                      Download
-                    </a>
-                    <a
-                      href={
-                        `https://storage.cloud.google.com/viam-data-${organizationId}/` +
-                        `${organizationId}/${machineId}/${partId}/files/` +
-                        `${file.binaryDataId.split("/").pop()}` +
-                        `${file.fileName}.gz`
-                      }
-                      rel="noreferrer"
-                      target="_blank"
-                      style={{
-                        marginLeft: '12px',
-                        padding: '6px 8px',
-                        backgroundColor: '#1d4ed8',
-                        color: 'white',
-                        borderRadius: '4px',
-                        fontSize: '12px',
-                        border: 'none',
-                        textDecoration: 'none'
-                      }}
-                    >
-                      Download from GCS
-                    </a>
-                  </div>
-                );
-              })}
-            {filteredPassFiles.length === 0 && fileSearchInputs[passId] && (
-              <div style={{
-                padding: '12px',
-                color: '#6b7280',
-                fontSize: '13px'
-              }}>
-                No files match &quot;{fileSearchInputs[passId]}&quot;
-              </div>
-            )}
-          </div>
-        </>
-      )}
-
-      {passFiles.length === 0 && !isLoading && (
-        <p style={{ fontSize: '13px', color: '#6b7280', marginTop: '8px', paddingLeft: '30px' }}>
-          No files found for this pass.
-        </p>
-      )}
-    </div>
-  );
-};
-
-interface AppViewProps {
-  passSummaries?: any[];
-  files: Map<string, VIAM.dataApi.BinaryData>;
-  videoFiles: Map<string, VIAM.dataApi.BinaryData>;
-  imageFiles: Map<string, VIAM.dataApi.BinaryData>;
-  fetchVideos: (start: Date) => Promise<void>;
-  machineName: string | null;
-  fetchTimestamp: Date | null;
-  machineId: string;
-  partId: string;
-  passNotes: Map<string, PassNote[]>;
-  onNotesUpdate: React.Dispatch<React.SetStateAction<Map<string, PassNote[]>>>;
-  passDiagnoses: Map<string, PassDiagnosis>;
-  onDiagnosesUpdate: React.Dispatch<React.SetStateAction<Map<string, PassDiagnosis>>>;
-  fetchingNotes: boolean;
-  pagination?: {
-    currentPage: number;
-    totalPages: number;
-    itemsPerPage: number;
-    totalItems: number;
-    onPageChange: (page: number) => void;
-    daysPerPage?: boolean;
-    currentDaysDisplayed?: number;
-    totalEntries?: number;
-  };
-}
-
-const AppInterface: React.FC<AppViewProps> = ({
-  machineName,
-  passSummaries = [],
-  files,
-  videoFiles,
-  imageFiles,
-  fetchVideos,
-  fetchTimestamp,
-  machineId,
-  partId,
-  passNotes,
-  onNotesUpdate,
-  passDiagnoses,
-  onDiagnosesUpdate,
-  fetchingNotes,
-  pagination,
-}) => {
-  const { robotClient, viamClient } = useViamClients();
-
-  const [activeRoute, setActiveRoute] = useState('live');
-  const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
-  const [videoStoreClient, setVideoStoreClient] = useState<VIAM.GenericComponentClient | null>(null);
-  const [selectedCamera, setSelectedCamera] = useState<string>(() => {
-    // Initialize from localStorage if available
-    return localStorage.getItem('selectedCamera') || '';
-  });
-  const [beforeAfterModal, setBeforeAfterModal] = useState<{
-    beforeImage: VIAM.dataApi.BinaryData | null;
-    afterImage: VIAM.dataApi.BinaryData | null;
-  } | null>(null);
-  const [noteInputs, setNoteInputs] = useState<Record<string, string>>({});
-  const [downloadingConfigs, setDownloadingConfigs] = useState<Set<string>>(new Set());
-  const [configMetadata, setConfigMetadata] = useState<Map<string, RobotConfigMetadata>>(new Map());
-  const [loadingConfigMetadata, setLoadingConfigMetadata] = useState<Set<string>>(new Set());
-  const [expandedFiles, setExpandedFiles] = useState<Set<string>>(new Set());
-  const [fileSearchInputs, setFileSearchInputs] = useState<Record<string, string>>({});
-  const [debouncedFileSearchInputs, setDebouncedFileSearchInputs] = useState<Record<string, string>>({});
-  const [expandedErrors, setExpandedErrors] = useState<Set<string>>(new Set());
-
-  // Diagnosis UI state
-  const [diagnosisInputs, setDiagnosisInputs] = useState<Record<string, { symptom?: string; cause?: string; jiraTicketUrl?: string }>>({});
-  const [jiraValidationErrors, setJiraValidationErrors] = useState<Record<string, string>>({});
-  // Combined saving state for notes + diagnosis
-  const [savingMetadata, setSavingMetadata] = useState<Set<string>>(new Set());
-  const [metadataSuccess, setMetadataSuccess] = useState<Set<string>>(new Set());
-  const binaryDataManger = useRef<BinaryDataManager>(new BinaryDataManager());
-
-
-  useEffect(() => {
-    binaryDataManger.current = new BinaryDataManager();
-    Array.from(files.values()).forEach((file) => {
-      binaryDataManger.current?.addBinaryDataFile(new BinaryDataFile(file));
-    });
-  }, [files]);
-
-  // Debounce file search inputs
-  useEffect(() => {
-    const handler = setTimeout(() => {
+    // Debounce file search inputs
+    useEffect(() => {
+      const handler = setTimeout(() => {
       setDebouncedFileSearchInputs(fileSearchInputs);
     }, 300); // 300ms delay
 
@@ -405,404 +102,120 @@ const AppInterface: React.FC<AppViewProps> = ({
 
   // Initialize diagnosis inputs from existing diagnoses
   useEffect(() => {
-    const initialDiagnoses: Record<string, { symptom?: string; cause?: string; jiraTicketUrl?: string }> = {};
+    const initialDiagnoses: Record<string, { symptom?: string; cause?: string }> = {};
     passDiagnoses.forEach((diagnosis, passId) => {
       initialDiagnoses[passId] = {
         symptom: diagnosis.symptom,
-        cause: diagnosis.cause,
-        jiraTicketUrl: diagnosis.jira_ticket_url
+        cause: diagnosis.cause
       };
     });
     setDiagnosisInputs(initialDiagnoses);
   }, [passDiagnoses]);
 
-  const handleNoteChange = (passId: string, value: string) => {
-    setNoteInputs(prev => ({
-      ...prev,
-      [passId]: value
-    }));
 
-    // Clear success state when editing
-    if (metadataSuccess.has(passId)) {
-      const newSuccess = new Set(metadataSuccess);
-      newSuccess.delete(passId);
-      setMetadataSuccess(newSuccess);
-    }
-  };
-
-  const handleDiagnosisChange = (passId: string, field: 'symptom' | 'cause' | 'jiraTicketUrl', value: string) => {
-    setDiagnosisInputs(prev => ({
-      ...prev,
-      [passId]: {
-        ...prev[passId],
-        [field]: value || undefined
-      }
-    }));
-
-    // Validate JIRA URL format
-    if (field === 'jiraTicketUrl') {
-      const trimmedValue = value.trim();
-      if (trimmedValue === '') {
-        // Empty is valid (field is optional)
-        setJiraValidationErrors(prev => {
-          const newErrors = { ...prev };
-          delete newErrors[passId];
-          return newErrors;
-        });
-      } else {
-        // Validate URL format
-        try {
-          const url = new URL(trimmedValue);
-          // Check if it's a Viam JIRA URL
-          if (url.hostname !== 'viam.atlassian.net') {
-            setJiraValidationErrors(prev => ({
-              ...prev,
-              [passId]: 'JIRA URL must be from viam.atlassian.net'
-            }));
-          } else if (!url.pathname.startsWith('/browse/')) {
-            setJiraValidationErrors(prev => ({
-              ...prev,
-              [passId]: 'JIRA URL must follow format: https://viam.atlassian.net/browse/PROJECT-123'
-            }));
-          } else {
-            // Valid JIRA URL
-            setJiraValidationErrors(prev => {
-              const newErrors = { ...prev };
-              delete newErrors[passId];
-              return newErrors;
-            });
+    const groupedPasses = useMemo(() => {
+        return passSummaries.reduce((acc: Record<string, Pass[]>, pass) => {
+          // Use a consistent date key (YYYY-MM-DD)
+          const dateKey = pass.start.toISOString().split('T')[0];
+          if (!acc[dateKey]) {
+            acc[dateKey] = [];
           }
-        } catch {
-          setJiraValidationErrors(prev => ({
-            ...prev,
-            [passId]: 'Please enter a valid URL'
-          }));
-        }
-      }
-    }
+          acc[dateKey].push(pass);
+          return acc;
+        }, {});
+      }, [passSummaries]);
 
-    // Clear success state when editing
-    if (metadataSuccess.has(passId)) {
-      const newSuccess = new Set(metadataSuccess);
-      newSuccess.delete(passId);
-      setMetadataSuccess(newSuccess);
-    }
-  };
+     // Memoize day aggregates calculation - calculate both execution percentage AND total time
+    const dayAggregates = useMemo(() => {
+        return Object.entries(groupedPasses).reduce((acc: Record<string, {
+        totalFactoryTime: number;
+        totalExecutionTime: number;
+        totalOtherStepsTime: number;
+        totalPassCount: number;
+        executionPercentage: number;
+        formattedDate: string;
+        totalBluePoints: number;
+        }>, [dateKey, passes]) => {
+        let totalFactoryTime = 0;
+        let totalExecutionTime = 0;
+        let totalOtherStepsTime = 0;
+        let totalBluePoints = 0;
 
-  const savePassMetadata = async (passId: string, isFailedPass: boolean) => {
-    if (!passId || !partId) return;
+        // Calculate both time and execution metrics
+        passes.forEach(pass => {
+            // Add pass duration to total time
+            const passDuration = pass.end.getTime() - pass.start.getTime();
+            totalFactoryTime += passDuration;
 
-    const noteText = noteInputs[passId]?.trim() || '';
-    const diagnosisData = diagnosisInputs[passId] || {};
-    const { symptom, cause, jiraTicketUrl } = diagnosisData;
+            // Calculate execution time for percentage
+            if (pass.steps && Array.isArray(pass.steps)) {
+            pass.steps.forEach(step => {
+                const stepDuration = step.end.getTime() - step.start.getTime();
 
-    // Show saving indicator
-    setSavingMetadata(prev => new Set(prev).add(passId));
-
-    try {
-      const metadataManager = getPassMetadataManager(viamClient, machineId);
-      
-      // Save note
-      await metadataManager.savePassNote(passId, noteText);
-      
-      // Save diagnosis only for failed passes
-      if (isFailedPass) {
-        await metadataManager.savePassDiagnosis(passId, symptom, cause, jiraTicketUrl);
-      }
-
-      // Update notes in state
-      const newNote: PassNote = {
-        pass_id: passId,
-        note_text: noteText,
-        created_at: new Date().toISOString(),
-        created_by: "summary-web-app"
-      };
-      onNotesUpdate(prevNotes => {
-        const newNotesMap = new Map(prevNotes);
-        newNotesMap.set(passId, [newNote]);
-        return newNotesMap;
-      });
-
-      // Update diagnoses in state (only for failed passes)
-      if (isFailedPass) {
-        onDiagnosesUpdate(prevDiagnoses => {
-          const newDiagnosesMap = new Map(prevDiagnoses);
-          if (symptom || cause || jiraTicketUrl) {
-            newDiagnosesMap.set(passId, {
-              pass_id: passId,
-              symptom: symptom as PassDiagnosis['symptom'],
-              cause: cause as PassDiagnosis['cause'],
-              jira_ticket_url: jiraTicketUrl,
-              updated_at: new Date().toISOString(),
-              updated_by: "summary-web-app"
+                // Look for the specific "executing" step (exact match or case-insensitive)
+                if (step.name.toLowerCase() === 'executing') {
+                totalExecutionTime += stepDuration;
+                } else {
+                totalOtherStepsTime += stepDuration;
+                }
             });
-          } else {
-            newDiagnosesMap.delete(passId);
-          }
-          return newDiagnosesMap;
-        });
-      }
-
-      // Show success state
-      setMetadataSuccess(prev => new Set(prev).add(passId));
-
-      // Clear success state after a delay
-      setTimeout(() => {
-        setMetadataSuccess(prev => {
-          const newSuccess = new Set(prev);
-          newSuccess.delete(passId);
-          return newSuccess;
-        });
-      }, 2000);
-    } catch (error) {
-      console.error("Failed to save pass metadata:", error);
-    } finally {
-      setSavingMetadata(prev => {
-        const newSaving = new Set(prev);
-        newSaving.delete(passId);
-        return newSaving;
-      });
-    }
-  };
-
-  const cameraComponentNames = Array.from(
-    new Set(
-      Array.from(imageFiles.values())
-        .filter(file => file.metadata?.captureMetadata?.componentType === 'rdk:component:camera')
-        .map(file => file.metadata?.captureMetadata?.componentName)
-        .filter((name): name is string => !!name)
-    )
-  );
-
-  // Track if we've done the initial camera auto-selection
-  const [hasAutoSelectedCamera, setHasAutoSelectedCamera] = useState(false);
-
-  // Auto-select camera: if only one available, select it; otherwise restore from localStorage
-  // Only runs once on initial load
-  useEffect(() => {
-    if (cameraComponentNames.length === 0 || hasAutoSelectedCamera) return;
-    
-    // Mark that we've done the auto-selection
-    setHasAutoSelectedCamera(true);
-    
-    // If only one camera, auto-select it
-    if (cameraComponentNames.length === 1) {
-      const onlyCamera = cameraComponentNames[0];
-      setSelectedCamera(onlyCamera);
-      localStorage.setItem('selectedCamera', onlyCamera);
-      return;
-    }
-    
-    // If multiple cameras, try to restore from localStorage
-    const savedCamera = localStorage.getItem('selectedCamera');
-    if (savedCamera && cameraComponentNames.includes(savedCamera)) {
-      setSelectedCamera(savedCamera);
-    }
-  }, [cameraComponentNames, hasAutoSelectedCamera]);
-
-  const openBeforeAfterModal = (beforeImage: VIAM.dataApi.BinaryData | null, afterImage: VIAM.dataApi.BinaryData | null) => {
-    setBeforeAfterModal({ beforeImage, afterImage });
-  };
-
-  const closeBeforeAfterModal = () => {
-    setBeforeAfterModal(null);
-  };
-
-  // Helper function to get before/after images for a pass
-  const passImages = (pass: Pass) => getBeforeAfterImages(pass, imageFiles, selectedCamera);
-
-  // Compute total execution time (ms) for a pass by summing 'executing' steps
-  const getExecutionTimeMs = (pass: Pass): number => {
-    if (!pass.steps || pass.steps.length === 0) return 0;
-    return pass.steps.reduce((sum, step) => {
-      return step.name.toLowerCase() === 'executing'
-        ? sum + (step.end.getTime() - step.start.getTime())
-        : sum;
-    }, 0);
-  };
-
-  const activeTabStyle = "bg-blue-600 text-white";
-  const inactiveTabStyle = "bg-gray-200 text-gray-700 hover:bg-gray-300";
-
-  // Memoize the grouped passes calculation with consistent date formatting
-  const groupedPasses = useMemo(() => {
-    return passSummaries.reduce((acc: Record<string, Pass[]>, pass) => {
-      // Use a consistent date key (YYYY-MM-DD)
-      const dateKey = pass.start.toISOString().split('T')[0];
-      if (!acc[dateKey]) {
-        acc[dateKey] = [];
-      }
-      acc[dateKey].push(pass);
-      return acc;
-    }, {});
-  }, [passSummaries]);
-
-  // Memoize day aggregates calculation - calculate both execution percentage AND total time
-  const dayAggregates = useMemo(() => {
-    return Object.entries(groupedPasses).reduce((acc: Record<string, {
-      totalFactoryTime: number;
-      totalExecutionTime: number;
-      totalOtherStepsTime: number;
-      totalPassCount: number;
-      executionPercentage: number;
-      formattedDate: string;
-      totalBluePoints: number;
-    }>, [dateKey, passes]) => {
-      let totalFactoryTime = 0;
-      let totalExecutionTime = 0;
-      let totalOtherStepsTime = 0;
-      let totalBluePoints = 0;
-
-      // Calculate both time and execution metrics
-      passes.forEach(pass => {
-        // Add pass duration to total time
-        const passDuration = pass.end.getTime() - pass.start.getTime();
-        totalFactoryTime += passDuration;
-
-        // Calculate execution time for percentage
-        if (pass.steps && Array.isArray(pass.steps)) {
-          pass.steps.forEach(step => {
-            const stepDuration = step.end.getTime() - step.start.getTime();
-
-            // Look for the specific "executing" step (exact match or case-insensitive)
-            if (step.name.toLowerCase() === 'executing') {
-              totalExecutionTime += stepDuration;
-            } else {
-              totalOtherStepsTime += stepDuration;
             }
-          });
+
+            // Sum up blue points
+            if (pass.blue_point_count !== undefined) {
+            totalBluePoints += pass.blue_point_count;
+            }
+        });
+
+        const totalStepsTime = totalExecutionTime + totalOtherStepsTime;
+        const executionPercentage = totalStepsTime > 0 ? (totalExecutionTime / totalStepsTime) * 100 : 0;
+
+        // Format the date for display using the dateKey (which is already YYYY-MM-DD)
+        const [year, month, day] = dateKey.split('-').map(Number);
+        const date = new Date(year, month - 1, day);
+        const formattedDate = date.toLocaleDateString([], { year: 'numeric', month: 'long', day: 'numeric' });
+
+        acc[dateKey] = {
+            totalFactoryTime,
+            totalExecutionTime,
+            totalOtherStepsTime,
+            totalPassCount: passes.length,
+            executionPercentage,
+            formattedDate,
+            totalBluePoints
+        };
+
+        return acc;
+        }, {});
+    }, [groupedPasses]);
+    // Compute total execution time (ms) for a pass by summing 'executing' steps
+    const getExecutionTimeMs = (pass: Pass): number => {
+        if (!pass.steps || pass.steps.length === 0) return 0;
+        return pass.steps.reduce((sum, step) => {
+        return step.name.toLowerCase() === 'executing'
+            ? sum + (step.end.getTime() - step.start.getTime())
+            : sum;
+        }, 0);
+    };
+
+    const handleFileSearchChange = (passId: string, value: string) => {
+        setFileSearchInputs(prev => ({
+        ...prev,
+        [passId]: value
+        }));
+    };
+
+    const toggleFilesExpansion = (passId: string) => {
+        const newExpandedFiles = new Set(expandedFiles);
+        if (newExpandedFiles.has(passId)) {
+        newExpandedFiles.delete(passId);
+        } else {
+        newExpandedFiles.add(passId);
         }
+        setExpandedFiles(newExpandedFiles);
+    };
 
-        // Sum up blue points
-        if (pass.blue_point_count !== undefined) {
-          totalBluePoints += pass.blue_point_count;
-        }
-      });
-
-      const totalStepsTime = totalExecutionTime + totalOtherStepsTime;
-      const executionPercentage = totalStepsTime > 0 ? (totalExecutionTime / totalStepsTime) * 100 : 0;
-
-      // Format the date for display using the dateKey (which is already YYYY-MM-DD)
-      const [year, month, day] = dateKey.split('-').map(Number);
-      const date = new Date(year, month - 1, day);
-      const formattedDate = date.toLocaleDateString([], { year: 'numeric', month: 'long', day: 'numeric' });
-
-      acc[dateKey] = {
-        totalFactoryTime,
-        totalExecutionTime,
-        totalOtherStepsTime,
-        totalPassCount: passes.length,
-        executionPercentage,
-        formattedDate,
-        totalBluePoints
-      };
-
-      return acc;
-    }, {});
-  }, [groupedPasses]);
-
-  const toggleRowExpansion = (index: string) => {
-    const newExpandedRows = new Set(expandedRows);
-    const isExpanding = !newExpandedRows.has(index);
-
-    if (isExpanding) {
-      newExpandedRows.add(index);
-      
-      // Fetch config metadata when expanding a row
-      const [dayIndexStr, passIndexStr] = index.split('-');
-      const dayIndex = parseInt(dayIndexStr);
-      const passIndex = parseInt(passIndexStr);
-      const dateKey = Object.keys(groupedPasses)[dayIndex];
-      const pass = groupedPasses[dateKey]?.[passIndex];
-      
-      if (pass && !configMetadata.has(pass.pass_id) && !loadingConfigMetadata.has(pass.pass_id)) {
-        const flatPasses = Object.values(groupedPasses).flat();
-        const { prevPass } = getPassConfigComparison(pass, flatPasses, configMetadata);
-        fetchConfigMetadata(pass, prevPass);
-      }
-    } else {
-      newExpandedRows.delete(index);
-    }
-    setExpandedRows(newExpandedRows);
-  };
-
-  const fetchConfigMetadata = async (pass: Pass, prevPass: Pass | null) => {
-    if (!partId) return;
-
-    const passId = pass.pass_id;
-    const prevPassId = prevPass?.pass_id;
-
-    const idsToLoad = [passId];
-    if (prevPassId && !configMetadata.has(prevPassId)) {
-      idsToLoad.push(prevPassId);
-    }
-
-    setLoadingConfigMetadata(prev => new Set([...prev, ...idsToLoad]));
-
-    try {
-      const promises = [getRobotConfigAtTime(viamClient, partId, pass.start)];
-      if (prevPass) {
-        promises.push(getRobotConfigAtTime(viamClient, partId, prevPass.start));
-      }
-
-      const results = await Promise.all(promises);
-      
-      const newMetadatas = new Map<string, RobotConfigMetadata>();
-      if (results[0]) {
-        newMetadatas.set(passId, results[0].metadata);
-      }
-      if (prevPassId && results[1]) {
-        newMetadatas.set(prevPassId, results[1].metadata);
-      }
-
-      if (newMetadatas.size > 0) {
-        setConfigMetadata(prev => new Map([...prev, ...newMetadatas]));
-      }
-    } catch (error) {
-      console.error('Error fetching config metadata:', error);
-    } finally {
-      setLoadingConfigMetadata(prev => {
-        const newSet = new Set(prev);
-        idsToLoad.forEach(id => newSet.delete(id));
-        return newSet;
-      });
-    }
-  };
-
-  const toggleFilesExpansion = (passId: string) => {
-    const newExpandedFiles = new Set(expandedFiles);
-    if (newExpandedFiles.has(passId)) {
-      newExpandedFiles.delete(passId);
-    } else {
-      newExpandedFiles.add(passId);
-    }
-    setExpandedFiles(newExpandedFiles);
-  };
-
-  const handleFileSearchChange = (passId: string, value: string) => {
-    setFileSearchInputs(prev => ({
-      ...prev,
-      [passId]: value
-    }));
-  };
-
-  const getStatusBadge = (success: boolean) => {
-    if (success) {
-      return (
-        <span className="moveleft inline-flex items-center justify-center py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 status-badge-width">
-          Success
-        </span>
-      );
-    } else {
-      return (
-        <span className="moveleft inline-flex items-center justify-center py-1 rounded-full text-xs font-medium bg-red-100 text-red-800 status-badge-width">
-          Failed
-        </span>
-      );
-    }
-  };
-
-  const handleDownloadConfig = async (pass: Pass) => {
+    const handleDownloadConfig = async (pass: Pass) => {
     if (!partId) {
       alert('Unable to download config: missing required information');
       return;
@@ -842,82 +255,233 @@ const AppInterface: React.FC<AppViewProps> = ({
     }
   };
 
-  return (
-    <div className="appInterface">
-      <header className="flex items-center sticky top-0 z-10 mb-4 px-4 py-3 border-b bg-zinc-50 shadow-none md:shadow-xs">
-        <div className="w-1/3 h-5 font-semibold text-zinc-900">Sanding history (legacy UI)</div>
+    const toggleRowExpansion = (index: string) => {
+        const newExpandedRows = new Set(expandedRows);
+        const isExpanding = !newExpandedRows.has(index);
 
-        <div className="w-1/3 flex justify-center">
-          <div className="flex flex-row items-center gap-2">
-            <button
-              onClick={() => setActiveRoute('live')}
-              className={`${activeRoute === 'live' ? activeTabStyle : inactiveTabStyle} h-9 sm:h-10 px-4 rounded`}
-            >
-              Pass summary
-            </button>
-          </div>
-        </div>
+        if (isExpanding) {
+        newExpandedRows.add(index);
+        
+        // Fetch config metadata when expanding a row
+        const [dayIndexStr, passIndexStr] = index.split('-');
+        const dayIndex = parseInt(dayIndexStr);
+        const passIndex = parseInt(passIndexStr);
+        const dateKey = Object.keys(groupedPasses)[dayIndex];
+        const pass = groupedPasses[dateKey]?.[passIndex];
+        
+        if (pass && !configMetadata.has(pass.pass_id) && !loadingConfigMetadata.has(pass.pass_id)) {
+            const flatPasses = Object.values(groupedPasses).flat();
+            const { prevPass } = getPassConfigComparison(pass, flatPasses, configMetadata);
+            fetchConfigMetadata(pass, prevPass);
+        }
+        } else {
+        newExpandedRows.delete(index);
+        }
+        setExpandedRows(newExpandedRows);
+    };
 
-        <div className="w-1/3"></div>
-      </header>
+    const passImages = (pass: Pass) => getBeforeAfterImages(pass, imageFiles, selectedCamera);
 
-      <main className="mainContent">
-        {activeRoute === 'live' && (
-          <section>
-            <div className='flex gap-8'>
-              {machineName && (
-                <div className="video-store-selector">
-                  <div className="video-store-selector-label" style={{ marginBottom: '0.6rem' }}>Machine name</div>
-                  <div>
-                    <span style={{
-                      display: 'inline-block',
-                      backgroundColor: '#f3f3f3',
-                      color: 'rgb(37 37 37)',
-                      padding: '0.5rem 0.75rem',
-                      borderRadius: '0.375rem',
-                      fontSize: '14px',
-                      fontWeight: '600',
-                    }}>
-                      {machineName}
-                    </span>
-                  </div>
-                </div>
-              )}
+    const fetchConfigMetadata = async (pass: Pass, prevPass: Pass | null) => {
+        if (!partId) return;
 
-              <VideoStoreSelector onVideoStoreSelected={setVideoStoreClient}/>
+        const passId = pass.pass_id;
+        const prevPassId = prevPass?.pass_id;
 
-              <div className="video-store-selector">
-                <label htmlFor="camera-select" className="video-store-selector-label">
-                  Select camera resource
-                </label>
-                {!robotClient ? (
-                  <div className="video-store-selector-message info">
-                    Connect to a robot to select a camera
-                  </div>
-                ) : cameraComponentNames.length > 0 ? (
-                  <select
-                    id="camera-select"
-                    value={selectedCamera}
-                    onChange={(e) => {
-                      setSelectedCamera(e.target.value);
-                      localStorage.setItem('selectedCamera', e.target.value);
-                    }}
-                    className="video-store-selector-select"
-                  >
-                    <option value="">Select a camera resource</option>
-                    {cameraComponentNames.map(name => (
-                      <option key={name} value={name}>{name}</option>
-                    ))}
-                  </select>
-                ) : (
-                  <div className="video-store-selector-message info">
-                    No camera resources found
-                  </div>
-                )}
-              </div>
-            </div>
+        const idsToLoad = [passId];
+        if (prevPassId && !configMetadata.has(prevPassId)) {
+        idsToLoad.push(prevPassId);
+        }
 
-            <div className="viam-table-container">
+        setLoadingConfigMetadata(prev => new Set([...prev, ...idsToLoad]));
+
+        try {
+        const promises = [getRobotConfigAtTime(viamClient, partId, pass.start)];
+        if (prevPass) {
+            promises.push(getRobotConfigAtTime(viamClient, partId, prevPass.start));
+        }
+
+        const results = await Promise.all(promises);
+        
+        const newMetadatas = new Map<string, RobotConfigMetadata>();
+        if (results[0]) {
+            newMetadatas.set(passId, results[0].metadata);
+        }
+        if (prevPassId && results[1]) {
+            newMetadatas.set(prevPassId, results[1].metadata);
+        }
+
+        if (newMetadatas.size > 0) {
+            setConfigMetadata(prev => new Map([...prev, ...newMetadatas]));
+        }
+        } catch (error) {
+        console.error('Error fetching config metadata:', error);
+        } finally {
+        setLoadingConfigMetadata(prev => {
+            const newSet = new Set(prev);
+            idsToLoad.forEach(id => newSet.delete(id));
+            return newSet;
+        });
+        }
+    };
+
+    const openBeforeAfterModal = (beforeImage: VIAM.dataApi.BinaryData | null, afterImage: VIAM.dataApi.BinaryData | null) => {
+        setBeforeAfterModal({ beforeImage, afterImage });
+    };
+
+    const handleNoteChange = (passId: string, value: string) => {
+      setNoteInputs(prev => ({
+        ...prev,
+        [passId]: value
+      }));
+  
+      // Clear success state when editing
+      if (metadataSuccess.has(passId)) {
+        const newSuccess = new Set(metadataSuccess);
+        newSuccess.delete(passId);
+        setMetadataSuccess(newSuccess);
+      }
+    };
+
+    const savePassMetadata = async (passId: string, isFailedPass: boolean) => {
+      if (!passId || !partId) return;
+  
+      const noteText = noteInputs[passId]?.trim() || '';
+      const diagnosisData = diagnosisInputs[passId] || {};
+      const { symptom, cause, jiraTicketUrl } = diagnosisData;
+  
+      // Show saving indicator
+      setSavingMetadata(prev => new Set(prev).add(passId));
+  
+      try {
+        const metadataManager = getPassMetadataManager(viamClient, machineId);
+        
+        // Save note
+        await metadataManager.savePassNote(passId, noteText);
+        
+        // Save diagnosis only for failed passes
+        if (isFailedPass) {
+          await metadataManager.savePassDiagnosis(passId, symptom, cause, jiraTicketUrl);
+        }
+  
+        // Update notes in state
+        const newNote: PassNote = {
+          pass_id: passId,
+          note_text: noteText,
+          created_at: new Date().toISOString(),
+          created_by: "summary-web-app"
+        };
+        onNotesUpdate(prevNotes => {
+          const newNotesMap = new Map(prevNotes);
+          newNotesMap.set(passId, [newNote]);
+          return newNotesMap;
+        });
+  
+        // Update diagnoses in state (only for failed passes)
+        if (isFailedPass) {
+          onDiagnosesUpdate(prevDiagnoses => {
+            const newDiagnosesMap = new Map(prevDiagnoses);
+            if (symptom || cause || jiraTicketUrl) {
+              newDiagnosesMap.set(passId, {
+                pass_id: passId,
+                symptom: symptom as PassDiagnosis['symptom'],
+                cause: cause as PassDiagnosis['cause'],
+                jira_ticket_url: jiraTicketUrl,
+                updated_at: new Date().toISOString(),
+                updated_by: "summary-web-app"
+              });
+            } else {
+              newDiagnosesMap.delete(passId);
+            }
+            return newDiagnosesMap;
+          });
+        }
+  
+        // Show success state
+        setMetadataSuccess(prev => new Set(prev).add(passId));
+  
+        // Clear success state after a delay
+        setTimeout(() => {
+          setMetadataSuccess(prev => {
+            const newSuccess = new Set(prev);
+            newSuccess.delete(passId);
+            return newSuccess;
+          });
+        }, 2000);
+      } catch (error) {
+        console.error("Failed to save pass metadata:", error);
+      } finally {
+        setSavingMetadata(prev => {
+          const newSaving = new Set(prev);
+          newSaving.delete(passId);
+          return newSaving;
+        });
+      }
+    };
+
+    const handleDiagnosisChange = (passId: string, field: 'symptom' | 'cause' | 'jiraTicketUrl', value: string) => {
+      setDiagnosisInputs(prev => ({
+        ...prev,
+        [passId]: {
+          ...prev[passId],
+          [field]: value || undefined
+        }
+      }));
+  
+      // Validate JIRA URL format
+      if (field === 'jiraTicketUrl') {
+        const trimmedValue = value.trim();
+        if (trimmedValue === '') {
+          // Empty is valid (field is optional)
+          setJiraValidationErrors(prev => {
+            const newErrors = { ...prev };
+            delete newErrors[passId];
+            return newErrors;
+          });
+        } else {
+          // Validate URL format
+          try {
+            const url = new URL(trimmedValue);
+            // Check if it's a Viam JIRA URL
+            if (url.hostname !== 'viam.atlassian.net') {
+              setJiraValidationErrors(prev => ({
+                ...prev,
+                [passId]: 'JIRA URL must be from viam.atlassian.net'
+              }));
+            } else if (!url.pathname.startsWith('/browse/')) {
+              setJiraValidationErrors(prev => ({
+                ...prev,
+                [passId]: 'JIRA URL must follow format: https://viam.atlassian.net/browse/PROJECT-123'
+              }));
+            } else {
+              // Valid JIRA URL
+              setJiraValidationErrors(prev => {
+                const newErrors = { ...prev };
+                delete newErrors[passId];
+                return newErrors;
+              });
+            }
+          } catch {
+            setJiraValidationErrors(prev => ({
+              ...prev,
+              [passId]: 'Please enter a valid URL'
+            }));
+          }
+        }
+      }
+  
+      // Clear success state when editing
+      if (metadataSuccess.has(passId)) {
+        const newSuccess = new Set(metadataSuccess);
+        newSuccess.delete(passId);
+        setMetadataSuccess(newSuccess);
+      }
+    };
+
+  
+    // TODO: split mega table component into smaller components (aggregation, row item, expanded row - (step grid, diagnosis section, files section))
+    return (
+        <div className="viam-table-container">
               <table className="viam-table">
                 <thead>
                   <tr>
@@ -1098,7 +662,7 @@ const AppInterface: React.FC<AppViewProps> = ({
                                     '—'
                                   )}
                                 </td>
-                                <td>{getStatusBadge(pass.success)}</td>
+                                <td><StatusBadge success={pass.success} /></td>
                                 <td className="text-zinc-700">{pass.start.toLocaleTimeString()}</td>
                                 <td className="text-zinc-700">{pass.end.toLocaleTimeString()}</td>
                                 <td className="text-zinc-700">{formatDurationToMinutesSeconds(pass.start, pass.end)}</td>
@@ -1498,7 +1062,7 @@ const AppInterface: React.FC<AppViewProps> = ({
                                               </div>
                                             );
                                           })}
-                                          <RenderIf condition={binaryDataManger.current.searchBinaryDataByFileName(SNAPSHOT_FILE_NAME_PREFIX).length > 0}>
+                                          <RenderIf condition={binaryDataManager.current.searchBinaryDataByFileName(SNAPSHOT_FILE_NAME_PREFIX).length > 0}>
                                             <div className="step-card">
                                               <div className="step-name">View Snapshot</div>
                                               <p>
@@ -1560,7 +1124,7 @@ const AppInterface: React.FC<AppViewProps> = ({
                                                         }}
                                                       >
                                                         <option value="">Select symptom...</option>
-                                                        {SYMPTOM_OPTIONS.map(option => (
+                                                        {SYMPTOM_OPTIONS.map((option: string) => (
                                                           <option key={option} value={option}>{option}</option>
                                                         ))}
                                                       </select>
@@ -1586,7 +1150,7 @@ const AppInterface: React.FC<AppViewProps> = ({
                                                         }}
                                                       >
                                                         <option value="">Select cause...</option>
-                                                        {CAUSE_OPTIONS.map(option => (
+                                                        {CAUSE_OPTIONS.map((option: string) => (
                                                           <option key={option} value={option}>{option}</option>
                                                         ))}
                                                       </select>
@@ -1803,7 +1367,7 @@ const AppInterface: React.FC<AppViewProps> = ({
                                           <div style={{ flex: '2 1 0%', minWidth: 0 }}>
                                             <PassFiles
                                               pass={pass}
-                                              binaryDataManager={binaryDataManger.current!}
+                                              binaryDataManager={binaryDataManager.current}
                                               viamClient={viamClient}
                                               fetchTimestamp={fetchTimestamp}
                                               expandedFiles={expandedFiles}
@@ -1829,93 +1393,7 @@ const AppInterface: React.FC<AppViewProps> = ({
                 </tbody>
               </table>
             </div>
-          </section>
-        )}
-      </main>
-
-      {/* Add pagination controls as sticky footer - only show when data is loaded */}
-      {pagination && passSummaries.length > 0 && (
-        <div className="pagination-container">
-          <div className="pagination-controls" style={{
-            display: 'flex',
-            justifyContent: 'center',
-            width: '100%',
-            gap: '4px'
-          }}>
-            <button
-              className="pagination-button"
-              disabled={pagination.currentPage === 1}
-              onClick={() => pagination.onPageChange(1)}
-            >
-              &laquo; First
-            </button>
-            <button
-              className="pagination-button"
-              disabled={pagination.currentPage === 1}
-              onClick={() => pagination.onPageChange(pagination.currentPage - 1)}
-            >
-              &lt; Prev
-            </button>
-
-            {/* Page numbers */}
-            {(() => {
-              const pages = [];
-              const maxVisible = 5; // Max visible page numbers
-              let startPage = Math.max(1, pagination.currentPage - Math.floor(maxVisible / 2));
-              const endPage = Math.min(pagination.totalPages, startPage + maxVisible - 1);
-
-              if (endPage - startPage + 1 < maxVisible) {
-                startPage = Math.max(1, endPage - maxVisible + 1);
-              }
-
-              for (let i = startPage; i <= endPage; i++) {
-                pages.push(
-                  <button
-                    key={i}
-                    className={`pagination-button ${pagination.currentPage === i ? 'active' : ''}`}
-                    onClick={() => pagination.onPageChange(i)}
-                  >
-                    {i}
-                  </button>
-                );
-              }
-              return pages;
-            })()}
-
-            <button
-              className="pagination-button"
-              disabled={pagination.currentPage === pagination.totalPages}
-              onClick={() => pagination.onPageChange(pagination.currentPage + 1)}
-            >
-              Next &gt;
-            </button>
-            <button
-              className="pagination-button"
-              disabled={pagination.currentPage === pagination.totalPages}
-              onClick={() => pagination.onPageChange(pagination.totalPages)}
-            >
-              Last &raquo;
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Add the modal at the end */}
-      {beforeAfterModal && (
-        <BeforeAfterModal
-          beforeImage={beforeAfterModal.beforeImage}
-          afterImage={beforeAfterModal.afterImage}
-          onClose={closeBeforeAfterModal}
-        />
-      )}
-
-      <GlobalLoadingIndicator 
-        isLoading={!!fetchTimestamp} 
-        currentDate={fetchTimestamp}
-        fileCount={files.size + videoFiles.size + imageFiles.size}
-      />
-    </div>
-  );
+    );
 };
 
-export default AppInterface;
+export default HistoryTable;

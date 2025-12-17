@@ -1,16 +1,19 @@
 import { Routes, Route } from 'react-router-dom';
 
 import App from './App';
-import { ViamClientProvider } from './ViamClientContext';
+import { ViamClientProvider } from './lib/contexts/ViamClientContext';
+import { EnvironmentProvider } from './lib/contexts/EnvironmentContext';
 
 function Root() {
   return (
-    <ViamClientProvider>
-      <Routes>
-        {/* Main list view - matches /machine/:machineInfo */}
-        <Route path="/machine/:machineInfo" element={<App />} />
-      </Routes>
-    </ViamClientProvider>
+    <EnvironmentProvider>
+        <ViamClientProvider>
+          <Routes>
+            {/* Main list view - matches /machine/:machineInfo */}
+            <Route path="/machine/:machineInfo" element={<App />} />
+          </Routes>
+        </ViamClientProvider>
+    </EnvironmentProvider>
   );
 }
 

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import * as VIAM from "@viamrobotics/sdk";
 
-import { useViamClients } from './ViamClientContext';
+import { useViamClients } from '../lib/contexts/ViamClientContext';
 
 const STORAGE_KEY = 'selectedVideoStore';
 

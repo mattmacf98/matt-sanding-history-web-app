@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import * as VIAM from "@viamrobotics/sdk";
 
-import { useViamClients } from './ViamClientContext';
+import { useViamClients } from '../lib/contexts/ViamClientContext';
 
 interface VideoModalProps {
   selectedVideo: VIAM.dataApi.BinaryData | null;
