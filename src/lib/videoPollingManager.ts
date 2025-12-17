@@ -87,7 +87,7 @@ export class VideoPollingManager {
     this.isPolling = true;
     const pollInterval = 5000; // Poll every 5 seconds
 
-    this.pollInterval = window.setInterval(async () => {
+    this.pollInterval = setInterval(async () => {
       if (this.activeRequests.size === 0) {
         this.stopPolling();
         return;
