@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react';
 import * as VIAM from "@viamrobotics/sdk";
-import AppInterface from './AppInterface';
 import { JsonValue } from '@viamrobotics/sdk';
 import { Pass, PassNote, PassDiagnosis } from './lib/types';
 import { Timestamp } from '@bufbuild/protobuf';
-
 import { getPassMetadataManager } from './lib/passMetadataManager';
-import { useViamClients } from './ViamClientContext';
+import { useViamClients } from './lib/contexts/ViamClientContext';
+import { useEnvironment } from './lib/contexts/EnvironmentContext';
+import AppInterface from './AppInterface';
+import NewAppInterface from './NewAppInterface';
 
 const sandingSummaryName = "sanding-summary";
 const sandingSummaryComponentType = "rdk:component:sensor";
@@ -14,6 +15,7 @@ const BATCH_SIZE = 100;
 
 function App() {
   const { locationId, machineId, machineName, organizationId, viamClient } = useViamClients();
+  const { legacy } = useEnvironment();
 
   const [passSummaries, setPassSummaries] = useState<Pass[]>([]);
   const [files, setFiles] = useState<Map<string, VIAM.dataApi.BinaryData>>(new Map());
@@ -300,8 +302,35 @@ function App() {
 
   const totalPages = Math.ceil(sortedDays.length / itemsPerPage);
 
-  return (
-    <AppInterface
+  if (legacy) {
+    return <AppInterface 
+      machineName={machineName}
+      passSummaries={currentPassSummaries}
+      files={files}
+      videoFiles={videoFiles}
+      imageFiles={imageFiles}
+      fetchVideos={fetchFiles}
+      fetchTimestamp={fetchTimestamp}
+      machineId={machineId}
+      partId={partId}
+      passNotes={passNotes}
+      onNotesUpdate={setPassNotes}
+      passDiagnoses={passDiagnoses}
+      onDiagnosesUpdate={setPassDiagnoses}
+      fetchingNotes={fetchingNotes}
+      pagination={{
+        currentPage,
+        totalPages,
+        itemsPerPage,
+        totalItems: sortedDays.length,
+        totalEntries: passSummaries.length,
+        onPageChange: handlePageChange,
+        currentDaysDisplayed: currentDays.length,
+        daysPerPage: true
+      }}
+    />;
+  } else {
+    return <NewAppInterface
       machineName={machineName}
       passSummaries={currentPassSummaries}
       files={files}
@@ -327,7 +356,7 @@ function App() {
         daysPerPage: true
       }}
     />
-  );
+  }
 }
 
 export default App;

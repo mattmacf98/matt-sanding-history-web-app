@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { CAUSE_OPTIONS, Pass, PassDiagnosis, PassNote, RobotConfigMetadata, Step, SYMPTOM_OPTIONS } from '../../lib/types';
 import { downloadRobotConfig, getPassConfigComparison, getRobotConfigAtTime } from '../../lib/configUtils';
-import { useViamClients } from '../../ViamClientContext';
+import { useViamClients } from '../../lib/contexts/ViamClientContext';
 import { formatDurationMs } from '../../lib/uiUtils';
 import { StatusBadge } from '../StatusBadge';
 import { formatDurationToMinutesSeconds, formatTimeDifference } from '../../lib/videoUtils';

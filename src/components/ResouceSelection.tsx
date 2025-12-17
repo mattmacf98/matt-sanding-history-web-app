@@ -1,4 +1,4 @@
-import { useViamClients } from "../ViamClientContext";
+import { useViamClients } from "../lib/contexts/ViamClientContext";
 import VideoStoreSelector from "./VideoStoreSelector";
 import * as VIAM from "@viamrobotics/sdk";
 

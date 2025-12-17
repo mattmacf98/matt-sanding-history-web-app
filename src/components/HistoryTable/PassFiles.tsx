@@ -2,7 +2,7 @@ import React, { useMemo } from 'react';
 import { Pass } from '../../lib/types';
 import { BinaryDataManager } from '../../lib/BinaryDataManager';
 import * as VIAM from "@viamrobotics/sdk";
-import { useViamClients } from '../../ViamClientContext';
+import { useViamClients } from '../../lib/contexts/ViamClientContext';
 
 interface PassFilesProps {
   pass: Pass;
