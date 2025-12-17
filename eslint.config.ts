@@ -13,6 +13,11 @@ export default defineConfig([
   tseslint.configs.recommended,
   pluginReact.configs.flat.recommended,
   {
+    settings: {
+      react: {
+        version: "detect",
+      },
+    },
     rules: {
       "@typescript-eslint/no-explicit-any": "off", // TODO: turn this back on eventually
       "react/react-in-jsx-scope": "off", // this is not needed for React 17+ 
