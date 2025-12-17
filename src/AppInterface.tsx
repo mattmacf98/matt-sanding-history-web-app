@@ -844,7 +844,7 @@ const AppInterface: React.FC<AppViewProps> = ({
   return (
     <div className="appInterface">
       <header className="flex items-center sticky top-0 z-10 mb-4 px-4 py-3 border-b bg-zinc-50 shadow-none md:shadow-xs">
-        <div className="w-1/3 h-5 font-semibold text-zinc-900">Sanding history</div>
+        <div className="w-1/3 h-5 font-semibold text-zinc-900">Sanding history (legacy UI)</div>
 
         <div className="w-1/3 flex justify-center">
           <div className="flex flex-row items-center gap-2">
