@@ -13,7 +13,6 @@ import {
   formatTimeDifference,
 } from './lib/videoUtils';
 import { getBeforeAfterImages, getStepVideos } from './lib/passUtils';
-import { formatDurationMs } from './lib/uiUtils';
 import { getPassMetadataManager } from './lib/passMetadataManager';
 import {
   getRobotConfigAtTime,
@@ -26,6 +25,7 @@ import RenderIf from './components/RenderIf';
 import { BinaryDataManager } from './lib/BinaryDataManager';
 import { BinaryDataFile } from './lib/BinaryDataFile';
 import { SNAPSHOT_FILE_NAME_PREFIX } from './lib/constants';
+import { DaySummaryHeader, DayAggregateData } from './components/HistoryTable/DaySummaryHeader';
 
 
 interface PassFilesProps {
@@ -639,17 +639,7 @@ const AppInterface: React.FC<AppViewProps> = ({
 
   // Memoize day aggregates calculation - calculate both execution percentage AND total time
   const dayAggregates = useMemo(() => {
-    return Object.entries(groupedPasses).reduce((acc: Record<string, {
-      totalFactoryTime: number;
-      totalExecutionTime: number;
-      totalOtherStepsTime: number;
-      totalPassCount: number;
-      executionPercentage: number;
-      formattedDate: string;
-      totalBluePoints: number;
-      symptomCounts: Map<string, number>;
-      causeCounts: Map<string, number>;
-    }>, [dateKey, passes]) => {
+    return Object.entries(groupedPasses).reduce((acc: Record<string, DayAggregateData>, [dateKey, passes]) => {
       let totalFactoryTime = 0;
       let totalExecutionTime = 0;
       let totalOtherStepsTime = 0;
@@ -955,80 +945,9 @@ const AppInterface: React.FC<AppViewProps> = ({
                 </thead>
                 <tbody>
                   {Object.entries(groupedPasses).map(([dateKey, passes], dayIndex) => {
-                    const {
-                      totalFactoryTime,
-                      totalExecutionTime,
-                      totalOtherStepsTime,
-                      totalPassCount,
-                      executionPercentage,
-                      formattedDate,
-                      symptomCounts,
-                      causeCounts
-                    } = dayAggregates[dateKey];
-
                     return (
                       <React.Fragment key={dateKey}>
-                        <tr className="day-summary-header">
-                          <td colSpan={11}>
-                            <div className="day-summary-content">
-                              <div className="day-summary-date">{formattedDate}</div>
-                              <div className="day-summary-stats">
-                                <div className="day-summary-item">
-                                  <span className="day-summary-label">Total Passes</span>
-                                  <span className="day-summary-value">{totalPassCount}</span>
-                                </div>
-                                <div className="day-summary-item">
-                                  <span className="day-summary-label">Total Time</span>
-                                  <span className="day-summary-value">{formatDurationMs(totalFactoryTime)}</span>
-                                </div>
-                                <div className="day-summary-item">
-                                  <span className="day-summary-label">Executing Time</span>
-                                  <span className="day-summary-value">{formatDurationMs(totalExecutionTime)}</span>
-                                </div>
-                                <div className="day-summary-item">
-                                  <span className="day-summary-label">Other Steps Time</span>
-                                  <span className="day-summary-value">{formatDurationMs(totalOtherStepsTime)}</span>
-                                </div>
-                                <div className="day-summary-item">
-                                  <span className="day-summary-label">Execution %</span>
-                                  <span className="day-summary-value">{executionPercentage.toFixed(1)}%</span>
-                                </div>
-                                <div className="day-summary-item diagnosis-item">
-                                  <span className="day-summary-label">Symptoms</span>
-                                  <span className="day-summary-value diagnosis-list" style={{ fontSize: '11px', lineHeight: '1.4' }}>
-                                    {symptomCounts.size > 0 ? (
-                                      Array.from(symptomCounts.entries())
-                                        .sort((a, b) => b[1] - a[1])
-                                        .map(([symptom, count]) => (
-                                          <div key={symptom}>
-                                            {symptom}: {count}
-                                          </div>
-                                        ))
-                                    ) : (
-                                      <span>—</span>
-                                    )}
-                                  </span>
-                                </div>
-                                <div className="day-summary-item diagnosis-item">
-                                  <span className="day-summary-label">Causes</span>
-                                  <span className="day-summary-value diagnosis-list" style={{ fontSize: '11px', lineHeight: '1.4' }}>
-                                    {causeCounts.size > 0 ? (
-                                      Array.from(causeCounts.entries())
-                                        .sort((a, b) => b[1] - a[1])
-                                        .map(([cause, count]) => (
-                                          <div key={cause}>
-                                            {cause}: {count}
-                                          </div>
-                                        ))
-                                    ) : (
-                                      <span>—</span>
-                                    )}
-                                  </span>
-                                </div>
-                              </div>
-                            </div>
-                          </td>
-                        </tr>
+                        <DaySummaryHeader data={dayAggregates[dateKey]} />
                         {passes.map((pass: Pass, passIndex: number) => {
                           const globalIndex = `${dayIndex}-${passIndex}`;
                           const passId = pass.pass_id;

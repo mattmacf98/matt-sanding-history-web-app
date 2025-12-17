@@ -1,14 +1,15 @@
 # Sanding Monitoring Web App
 
-A basic React TypeScript application with minimal dependencies that displays a list of strings, built with Vite.
+A React TypeScript application for monitoring and analyzing sanding pass history, integrated with the Viam platform.
 
 ## Features
 
-- React 18 with TypeScript
-- Vite for fast development and building
-- Minimal dependencies
-- String list component that renders a list of strings
-- Clean, modern UI
+- Sanding pass history visualization with expandable detail rows
+- Video and image capture viewing per step
+- Robot config download and comparison between passes
+- Diagnosis tracking (symptoms/causes) for failed passes
+- Daily aggregation with execution time metrics
+- Log download per step for debugging
 
 ## Getting Started
 
@@ -39,7 +40,10 @@ A basic React TypeScript application with minimal dependencies that displays a l
 
 - `src/Root.tsx` - Sets up routing and Viam client context
 - `src/App.tsx` - Fetches sanding pass data
-- `src/AppInterface.tsx` - Main UI component for displaying sanding history
+- `src/AppInterface.tsx` - Legacy UI component (being refactored)
+- `src/NewAppInterface.tsx` - Refactored UI component (uses modular components)
+- `src/components/` - Reusable UI components
+- `src/lib/` - Utilities, types, and contexts
 - `src/index.tsx` - Application entry point
 - `index.html` - HTML template
 - `vite.config.ts` - Vite configuration
