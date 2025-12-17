@@ -1,6 +1,6 @@
 import * as VIAM from "@viamrobotics/sdk";
 import type { JsonValue } from '@bufbuild/protobuf';
-import { PassNote, PassDiagnosis } from '../types';
+import { PassNote, PassDiagnosis } from './types';
 
 const NOTE_PREFIX = 'note-';
 const DIAGNOSIS_PREFIX = 'diagnosis-';

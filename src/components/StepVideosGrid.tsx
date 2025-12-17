@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useRef } from "react";
 import * as VIAM from "@viamrobotics/sdk";
 import VideoModal from "./VideoModal";
-import { Step } from "./types";
-import { generateVideo } from "./lib/videoUtils";
-import { VideoPollingManager } from "./lib/videoPollingManager";
+import { Step } from "../lib/types";
+import { generateVideo } from "../lib/videoUtils";
+import { VideoPollingManager } from "../lib/videoPollingManager";
 
 
 interface StepVideosGridProps {

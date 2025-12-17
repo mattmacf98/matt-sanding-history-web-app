@@ -1,5 +1,5 @@
 import * as VIAM from "@viamrobotics/sdk";
-import { Pass, RobotConfigMetadata, RobotConfig } from '../types';
+import { Pass, RobotConfigMetadata, RobotConfig } from './types';
 
 /**
  * Extract metadata from a robot part history entry

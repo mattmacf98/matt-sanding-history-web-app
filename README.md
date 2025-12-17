@@ -59,3 +59,27 @@ A basic React TypeScript application with minimal dependencies that displays a l
 # Making Changes
 
 When making a change to this repo, please run `npx @changesets/cli` to properly update the package.json using semantic versioning.
+## (TEMP) App Refactor
+
+We are actively refactoring the application so that `NewAppInterface` will become the main app component, replacing the legacy `AppInterface` structure. As part of this process, large sections of `AppInterface.tsx` are being split into smaller, reusable components.
+
+If you are adding new features during this transition, please:
+
+- Extract your UI or logic into a standalone component wherever possible.
+- Add that component to both `AppInterface` (the legacy structure) and `NewAppInterface` (the new structure), so both UIs remain feature-complete until the refactor is finished.
+
+This ensures a smooth migration, keeps both app paths up to date, and avoids merge conflicts as we make the switch.
+
+Once the migration to `NewAppInterface` is complete, the legacy path will be removed.
+
+### Troubleshooting: Switch Back to Legacy UI
+
+If you encounter a problem or missing feature in the refactored UI, you can force the app to use the legacy version by adding `?legacy=true` to the URL in your browser's address bar and refreshing the page.
+
+For example:
+
+```
+http://localhost:3000/?legacy=true
+```
+
+This will temporarily revert to the original app interface until the refactor is complete or your issue (please report) is resolved.
