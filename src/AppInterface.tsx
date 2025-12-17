@@ -259,6 +259,7 @@ const PassFiles: React.FC<PassFilesProps> = ({
                         `${file.binaryDataId.split("/").pop()}` +
                         `${file.fileName}.gz`
                       }
+                      rel="noreferrer"
                       target="_blank"
                       style={{
                         marginLeft: '12px',
@@ -282,7 +283,7 @@ const PassFiles: React.FC<PassFilesProps> = ({
                 color: '#6b7280',
                 fontSize: '13px'
               }}>
-                No files match "{fileSearchInputs[passId]}"
+                No files match &quot;{fileSearchInputs[passId]}&quot;
               </div>
             )}
           </div>
@@ -471,7 +472,7 @@ const AppInterface: React.FC<AppViewProps> = ({
               return newErrors;
             });
           }
-        } catch (e) {
+        } catch {
           setJiraValidationErrors(prev => ({
             ...prev,
             [passId]: 'Please enter a valid URL'
@@ -1861,7 +1862,7 @@ const AppInterface: React.FC<AppViewProps> = ({
               const pages = [];
               const maxVisible = 5; // Max visible page numbers
               let startPage = Math.max(1, pagination.currentPage - Math.floor(maxVisible / 2));
-              let endPage = Math.min(pagination.totalPages, startPage + maxVisible - 1);
+              const endPage = Math.min(pagination.totalPages, startPage + maxVisible - 1);
 
               if (endPage - startPage + 1 < maxVisible) {
                 startPage = Math.max(1, endPage - maxVisible + 1);

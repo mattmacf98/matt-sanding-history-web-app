@@ -7,7 +7,10 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
+    "sanity": "npm run typecheck && npm run lint",
     "typecheck": "tsc --noEmit",
+    "lint": "eslint \"src/**/*.{js,jsx,ts,tsx}\"",
+    "lint:fix": "eslint \"src/**/*.{js,jsx,ts,tsx}\" --fix",
     "test": "vitest",
     "test:ui": "vitest --ui"
   },
@@ -19,12 +22,19 @@
     "react-router-dom": "^7.10.1"
   },
   "devDependencies": {
+    "@eslint/js": "^9.39.2",
     "@types/js-cookie": "^3.0.6",
     "@types/react": "^18.2.0",
     "@types/react-dom": "^18.2.0",
     "@types/react-router-dom": "^5.3.3",
     "@vitejs/plugin-react": "^4.0.0",
+    "eslint": "^9.39.2",
+    "eslint-plugin-react": "^7.37.5",
+    "eslint-plugin-react-hooks": "^7.0.1",
+    "globals": "^16.5.0",
+    "jiti": "^2.6.1",
     "typescript": "^5.0.0",
+    "typescript-eslint": "^8.50.0",
     "vite": "^4.4.0"
   }
 }
