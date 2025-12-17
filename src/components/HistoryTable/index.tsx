@@ -461,7 +461,7 @@ const HistoryTable: React.FC<HistoryTableProps> = ({
                 return newErrors;
               });
             }
-          } catch (e) {
+          } catch {
             setJiraValidationErrors(prev => ({
               ...prev,
               [passId]: 'Please enter a valid URL'

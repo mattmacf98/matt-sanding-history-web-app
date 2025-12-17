@@ -11,7 +11,7 @@ interface PaginationProps {
     passSummaries: Pass[];
 }
 
-export const Pagination: React.FC<PaginationProps> = ({ pagination, passSummaries }) => {
+export const Pagination: React.FC<PaginationProps> = ({ pagination, passSummaries }: PaginationProps) => {
     if (passSummaries.length === 0) {
         return null;
     }
@@ -43,7 +43,7 @@ export const Pagination: React.FC<PaginationProps> = ({ pagination, passSummarie
               const pages = [];
               const maxVisible = 5; // Max visible page numbers
               let startPage = Math.max(1, pagination.currentPage - Math.floor(maxVisible / 2));
-              let endPage = Math.min(pagination.totalPages, startPage + maxVisible - 1);
+              const endPage = Math.min(pagination.totalPages, startPage + maxVisible - 1);
 
               if (endPage - startPage + 1 < maxVisible) {
                 startPage = Math.max(1, endPage - maxVisible + 1);

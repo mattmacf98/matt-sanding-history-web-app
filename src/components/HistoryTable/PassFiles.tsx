@@ -235,6 +235,7 @@ export const PassFiles: React.FC<PassFilesProps> = ({
                         `${file.binaryDataId.split("/").pop()}` +
                         `${file.fileName}.gz`
                       }
+                      rel="noreferrer"
                       target="_blank"
                       style={{
                         marginLeft: '12px',
@@ -258,7 +259,7 @@ export const PassFiles: React.FC<PassFilesProps> = ({
                 color: '#6b7280',
                 fontSize: '13px'
               }}>
-                No files match "{fileSearchInputs[passId]}"
+                No files match &ldquo;{fileSearchInputs[passId]}&rdquo;
               </div>
             )}
           </div>

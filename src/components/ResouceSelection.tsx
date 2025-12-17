@@ -10,7 +10,7 @@ interface ResourceSelectionProps {
     setSelectedCamera: (camera: string) => void;
 }
 
-export const ResourceSelection: React.FC<ResourceSelectionProps> = ({ machineName, setVideoStoreClient, cameraComponentNames, selectedCamera, setSelectedCamera }) => {
+export const ResourceSelection: React.FC<ResourceSelectionProps> = ({ machineName, setVideoStoreClient, cameraComponentNames, selectedCamera, setSelectedCamera }: ResourceSelectionProps) => {
     const { robotClient } = useViamClients();
 
     return (
