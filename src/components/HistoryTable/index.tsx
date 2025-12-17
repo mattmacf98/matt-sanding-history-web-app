@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { CAUSE_OPTIONS, Pass, PassDiagnosis, PassNote, RobotConfigMetadata, Step, SYMPTOM_OPTIONS } from '../../lib/types';
 import { downloadRobotConfig, getPassConfigComparison, getRobotConfigAtTime } from '../../lib/configUtils';
 import { useViamClients } from '../../ViamClientContext';
@@ -11,6 +11,11 @@ import ImageDisplay from '../ImageDisplay';
 import StepVideosGrid from '../StepVideosGrid';
 import { getPassMetadataManager } from '../../lib/passMetadataManager';
 import { PassFiles } from './PassFiles';
+import RenderIf from '../RenderIf';
+import { SNAPSHOT_FILE_NAME_PREFIX } from '../../lib/constants';
+import Button from '../Button';
+import { BinaryDataManager } from '../../lib/BinaryDataManager';
+import { BinaryDataFile } from '../../lib/BinaryDataFile';
 
 interface HistoryTableProps {
     partId: string; //TODO: can thes just be grabbed from the viam context?
@@ -47,7 +52,7 @@ const HistoryTable: React.FC<HistoryTableProps> = ({
     videoFiles,
     fetchTimestamp,
     fetchVideos,
-    files
+    files,
 }) => {
     const { viamClient } = useViamClients();
 
@@ -59,14 +64,23 @@ const HistoryTable: React.FC<HistoryTableProps> = ({
     const [configMetadata, setConfigMetadata] = useState<Map<string, RobotConfigMetadata>>(new Map());
     const [loadingConfigMetadata, setLoadingConfigMetadata] = useState<Set<string>>(new Set());
     const [expandedErrors, setExpandedErrors] = useState<Set<string>>(new Set());
-    const [diagnosisInputs, setDiagnosisInputs] = useState<Record<string, { symptom?: string; cause?: string }>>({});
+    const [diagnosisInputs, setDiagnosisInputs] = useState<Record<string, { symptom?: string; cause?: string; jiraTicketUrl?: string }>>({});
     const [metadataSuccess, setMetadataSuccess] = useState<Set<string>>(new Set());
     const [savingMetadata, setSavingMetadata] = useState<Set<string>>(new Set());
     const [debouncedFileSearchInputs, setDebouncedFileSearchInputs] = useState<Record<string, string>>({});
+    const [jiraValidationErrors, setJiraValidationErrors] = useState<Record<string, string>>({});
+    const binaryDataManager = useRef<BinaryDataManager>(new BinaryDataManager());
 
-     // Debounce file search inputs
-  useEffect(() => {
-    const handler = setTimeout(() => {
+    useEffect(() => {
+        binaryDataManager.current = new BinaryDataManager();
+        Array.from(files.values()).forEach((file) => {
+            binaryDataManager.current?.addBinaryDataFile(new BinaryDataFile(file));
+        });
+    }, [files]);
+
+    // Debounce file search inputs
+    useEffect(() => {
+      const handler = setTimeout(() => {
       setDebouncedFileSearchInputs(fileSearchInputs);
     }, 300); // 300ms delay
 
@@ -315,6 +329,155 @@ const HistoryTable: React.FC<HistoryTableProps> = ({
         setBeforeAfterModal({ beforeImage, afterImage });
     };
 
+    const handleNoteChange = (passId: string, value: string) => {
+      setNoteInputs(prev => ({
+        ...prev,
+        [passId]: value
+      }));
+  
+      // Clear success state when editing
+      if (metadataSuccess.has(passId)) {
+        const newSuccess = new Set(metadataSuccess);
+        newSuccess.delete(passId);
+        setMetadataSuccess(newSuccess);
+      }
+    };
+
+    const savePassMetadata = async (passId: string, isFailedPass: boolean) => {
+      if (!passId || !partId) return;
+  
+      const noteText = noteInputs[passId]?.trim() || '';
+      const diagnosisData = diagnosisInputs[passId] || {};
+      const { symptom, cause, jiraTicketUrl } = diagnosisData;
+  
+      // Show saving indicator
+      setSavingMetadata(prev => new Set(prev).add(passId));
+  
+      try {
+        const metadataManager = getPassMetadataManager(viamClient, machineId);
+        
+        // Save note
+        await metadataManager.savePassNote(passId, noteText);
+        
+        // Save diagnosis only for failed passes
+        if (isFailedPass) {
+          await metadataManager.savePassDiagnosis(passId, symptom, cause, jiraTicketUrl);
+        }
+  
+        // Update notes in state
+        const newNote: PassNote = {
+          pass_id: passId,
+          note_text: noteText,
+          created_at: new Date().toISOString(),
+          created_by: "summary-web-app"
+        };
+        onNotesUpdate(prevNotes => {
+          const newNotesMap = new Map(prevNotes);
+          newNotesMap.set(passId, [newNote]);
+          return newNotesMap;
+        });
+  
+        // Update diagnoses in state (only for failed passes)
+        if (isFailedPass) {
+          onDiagnosesUpdate(prevDiagnoses => {
+            const newDiagnosesMap = new Map(prevDiagnoses);
+            if (symptom || cause || jiraTicketUrl) {
+              newDiagnosesMap.set(passId, {
+                pass_id: passId,
+                symptom: symptom as PassDiagnosis['symptom'],
+                cause: cause as PassDiagnosis['cause'],
+                jira_ticket_url: jiraTicketUrl,
+                updated_at: new Date().toISOString(),
+                updated_by: "summary-web-app"
+              });
+            } else {
+              newDiagnosesMap.delete(passId);
+            }
+            return newDiagnosesMap;
+          });
+        }
+  
+        // Show success state
+        setMetadataSuccess(prev => new Set(prev).add(passId));
+  
+        // Clear success state after a delay
+        setTimeout(() => {
+          setMetadataSuccess(prev => {
+            const newSuccess = new Set(prev);
+            newSuccess.delete(passId);
+            return newSuccess;
+          });
+        }, 2000);
+      } catch (error) {
+        console.error("Failed to save pass metadata:", error);
+      } finally {
+        setSavingMetadata(prev => {
+          const newSaving = new Set(prev);
+          newSaving.delete(passId);
+          return newSaving;
+        });
+      }
+    };
+
+    const handleDiagnosisChange = (passId: string, field: 'symptom' | 'cause' | 'jiraTicketUrl', value: string) => {
+      setDiagnosisInputs(prev => ({
+        ...prev,
+        [passId]: {
+          ...prev[passId],
+          [field]: value || undefined
+        }
+      }));
+  
+      // Validate JIRA URL format
+      if (field === 'jiraTicketUrl') {
+        const trimmedValue = value.trim();
+        if (trimmedValue === '') {
+          // Empty is valid (field is optional)
+          setJiraValidationErrors(prev => {
+            const newErrors = { ...prev };
+            delete newErrors[passId];
+            return newErrors;
+          });
+        } else {
+          // Validate URL format
+          try {
+            const url = new URL(trimmedValue);
+            // Check if it's a Viam JIRA URL
+            if (url.hostname !== 'viam.atlassian.net') {
+              setJiraValidationErrors(prev => ({
+                ...prev,
+                [passId]: 'JIRA URL must be from viam.atlassian.net'
+              }));
+            } else if (!url.pathname.startsWith('/browse/')) {
+              setJiraValidationErrors(prev => ({
+                ...prev,
+                [passId]: 'JIRA URL must follow format: https://viam.atlassian.net/browse/PROJECT-123'
+              }));
+            } else {
+              // Valid JIRA URL
+              setJiraValidationErrors(prev => {
+                const newErrors = { ...prev };
+                delete newErrors[passId];
+                return newErrors;
+              });
+            }
+          } catch (e) {
+            setJiraValidationErrors(prev => ({
+              ...prev,
+              [passId]: 'Please enter a valid URL'
+            }));
+          }
+        }
+      }
+  
+      // Clear success state when editing
+      if (metadataSuccess.has(passId)) {
+        const newSuccess = new Set(metadataSuccess);
+        newSuccess.delete(passId);
+        setMetadataSuccess(newSuccess);
+      }
+    };
+
   
     // TODO: split mega table component into smaller components (aggregation, row item, expanded row - (step grid, diagnosis section, files section))
     return (
@@ -382,113 +545,6 @@ const HistoryTable: React.FC<HistoryTableProps> = ({
                           const passId = pass.pass_id;
                           const passNotesData = passNotes.get(passId) || [];
                           const execMs = getExecutionTimeMs(pass);
-
-
-                           const handleDiagnosisChange = (passId: string, field: 'symptom' | 'cause', value: string) => {
-                                setDiagnosisInputs(prev => ({
-                                ...prev,
-                                [passId]: {
-                                    ...prev[passId],
-                                    [field]: value || undefined
-                                }
-                                }));
-
-                                // Clear success state when editing
-                                if (metadataSuccess.has(passId)) {
-                                const newSuccess = new Set(metadataSuccess);
-                                newSuccess.delete(passId);
-                                setMetadataSuccess(newSuccess);
-                                }
-                            };
-
-                            const handleNoteChange = (passId: string, value: string) => {
-                                setNoteInputs(prev => ({
-                                ...prev,
-                                [passId]: value
-                                }));
-
-                                // Clear success state when editing
-                                if (metadataSuccess.has(passId)) {
-                                const newSuccess = new Set(metadataSuccess);
-                                newSuccess.delete(passId);
-                                setMetadataSuccess(newSuccess);
-                                }
-                            };
-
-                            const savePassMetadata = async (passId: string, isFailedPass: boolean) => {
-                                if (!passId || !partId) return;
-
-                                const noteText = noteInputs[passId]?.trim() || '';
-                                const diagnosisData = diagnosisInputs[passId] || {};
-                                const { symptom, cause } = diagnosisData;
-
-                                // Show saving indicator
-                                setSavingMetadata(prev => new Set(prev).add(passId));
-
-                                try {
-                                const metadataManager = getPassMetadataManager(viamClient, machineId);
-                                
-                                // Save note
-                                await metadataManager.savePassNote(passId, noteText);
-                                
-                                // Save diagnosis only for failed passes
-                                if (isFailedPass) {
-                                    await metadataManager.savePassDiagnosis(passId, symptom, cause);
-                                }
-
-                                // Update notes in state
-                                const newNote: PassNote = {
-                                    pass_id: passId,
-                                    note_text: noteText,
-                                    created_at: new Date().toISOString(),
-                                    created_by: "summary-web-app"
-                                };
-                                onNotesUpdate(prevNotes => {
-                                    const newNotesMap = new Map(prevNotes);
-                                    newNotesMap.set(passId, [newNote]);
-                                    return newNotesMap;
-                                });
-
-                                // Update diagnoses in state (only for failed passes)
-                                if (isFailedPass) {
-                                    onDiagnosesUpdate(prevDiagnoses => {
-                                    const newDiagnosesMap = new Map(prevDiagnoses);
-                                    if (symptom || cause) {
-                                        newDiagnosesMap.set(passId, {
-                                        pass_id: passId,
-                                        symptom: symptom as PassDiagnosis['symptom'],
-                                        cause: cause as PassDiagnosis['cause'],
-                                        updated_at: new Date().toISOString(),
-                                        updated_by: "summary-web-app"
-                                        });
-                                    } else {
-                                        newDiagnosesMap.delete(passId);
-                                    }
-                                    return newDiagnosesMap;
-                                    });
-                                }
-
-                                // Show success state
-                                setMetadataSuccess(prev => new Set(prev).add(passId));
-
-                                // Clear success state after a delay
-                                setTimeout(() => {
-                                    setMetadataSuccess(prev => {
-                                    const newSuccess = new Set(prev);
-                                    newSuccess.delete(passId);
-                                    return newSuccess;
-                                    });
-                                }, 2000);
-                                } catch (error) {
-                                console.error("Failed to save pass metadata:", error);
-                                } finally {
-                                setSavingMetadata(prev => {
-                                    const newSaving = new Set(prev);
-                                    newSaving.delete(passId);
-                                    return newSaving;
-                                });
-                                }
-                            };
 
                           return (
                             <React.Fragment key={pass.pass_id || globalIndex}>
@@ -1001,12 +1057,26 @@ const HistoryTable: React.FC<HistoryTableProps> = ({
                                                   videoFiles={videoFiles}
                                                   fetchTimestamp={fetchTimestamp}
                                                   videoStoreClient={videoStoreClient}
-                                                  viamClient={viamClient}
                                                   fetchVideos={fetchVideos}
                                                 />
                                               </div>
                                             );
                                           })}
+                                          <RenderIf condition={binaryDataManager.current.searchBinaryDataByFileName(SNAPSHOT_FILE_NAME_PREFIX).length > 0}>
+                                            <div className="step-card">
+                                              <div className="step-name">View Snapshot</div>
+                                              <p>
+                                                Load and display a 3D scene from a snapshot file.
+                                                </p>
+                                                <div style={{ display: "flex", justifyContent: "center", alignItems: "center" }}>
+                                                  <Button>
+                                                    View
+                                                  </Button>
+                                                </div>
+                                            </div>
+                                          </RenderIf>
+                                          
+                                          
                                         </div>
 
                                         {/* Diagnosis and Notes Section - shows for all passes, diagnosis fields only for failed */}
@@ -1054,7 +1124,7 @@ const HistoryTable: React.FC<HistoryTableProps> = ({
                                                         }}
                                                       >
                                                         <option value="">Select symptom...</option>
-                                                        {SYMPTOM_OPTIONS.map(option => (
+                                                        {SYMPTOM_OPTIONS.map((option: string) => (
                                                           <option key={option} value={option}>{option}</option>
                                                         ))}
                                                       </select>
@@ -1080,11 +1150,68 @@ const HistoryTable: React.FC<HistoryTableProps> = ({
                                                         }}
                                                       >
                                                         <option value="">Select cause...</option>
-                                                        {CAUSE_OPTIONS.map(option => (
+                                                        {CAUSE_OPTIONS.map((option: string) => (
                                                           <option key={option} value={option}>{option}</option>
                                                         ))}
                                                       </select>
                                                     </div>
+                                                  </div>
+                                                )}
+
+                                                {/* JIRA Ticket URL - only for failed passes when cause is selected */}
+                                                {!pass.success && diagnosisInputs[passId]?.cause && (
+                                                  <div>
+                                                    <label htmlFor={`jira-${passId}`} style={{ display: 'block', fontSize: '13px', fontWeight: 500, color: '#374151', marginBottom: '6px' }}>
+                                                      JIRA Ticket (e.g. https://viam.atlassian.net/browse/RSDK-1234)
+                                                    </label>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                      <input
+                                                        id={`jira-${passId}`}
+                                                        type="url"
+                                                        value={diagnosisInputs[passId]?.jiraTicketUrl || ''}
+                                                        onChange={(e) => handleDiagnosisChange(passId, 'jiraTicketUrl', e.target.value)}
+                                                        placeholder="https://viam.atlassian.net/browse/RSDK-..."
+                                                        style={{
+                                                          flex: 1,
+                                                          padding: '10px 12px',
+                                                          fontSize: '14px',
+                                                          border: '1px solid #d1d5db',
+                                                          borderRadius: '6px',
+                                                          backgroundColor: '#ffffff',
+                                                          outline: 'none'
+                                                        }}
+                                                      />
+                                                      {diagnosisInputs[passId]?.jiraTicketUrl && !jiraValidationErrors[passId] && (
+                                                        <a
+                                                          href={diagnosisInputs[passId].jiraTicketUrl}
+                                                          target="_blank"
+                                                          rel="noopener noreferrer"
+                                                          style={{
+                                                            padding: '10px 12px',
+                                                            fontSize: '14px',
+                                                            color: '#3b82f6',
+                                                            textDecoration: 'none',
+                                                            border: '1px solid #d1d5db',
+                                                            borderRadius: '6px',
+                                                            backgroundColor: '#ffffff',
+                                                            display: 'flex',
+                                                            alignItems: 'center'
+                                                          }}
+                                                          title="Open JIRA ticket"
+                                                        >
+                                                          🔗
+                                                        </a>
+                                                      )}
+                                                    </div>
+                                                    {jiraValidationErrors[passId] && (
+                                                      <div style={{ 
+                                                        fontSize: '12px', 
+                                                        color: '#dc2626', 
+                                                        marginTop: '4px' 
+                                                      }}>
+                                                        {jiraValidationErrors[passId]}
+                                                      </div>
+                                                    )}
                                                   </div>
                                                 )}
 
@@ -1126,13 +1253,16 @@ const HistoryTable: React.FC<HistoryTableProps> = ({
                                                     onClick={() => savePassMetadata(passId, !pass.success)}
                                                     disabled={(() => {
                                                       if (savingMetadata.has(passId) || metadataSuccess.has(passId)) return true;
+                                                      // Disable if there are JIRA validation errors
+                                                      if (jiraValidationErrors[passId]) return true;
                                                       const noteText = noteInputs[passId] || '';
                                                       const existingNoteText = passNotesData.length > 0 ? passNotesData[0].note_text : '';
                                                       const noteChanged = noteText.trim() !== existingNoteText.trim();
                                                       if (!pass.success) {
                                                         const diagnosisChanged = 
                                                           (passDiagnoses.get(passId)?.symptom || '') !== (diagnosisInputs[passId]?.symptom || '') ||
-                                                          (passDiagnoses.get(passId)?.cause || '') !== (diagnosisInputs[passId]?.cause || '');
+                                                          (passDiagnoses.get(passId)?.cause || '') !== (diagnosisInputs[passId]?.cause || '') ||
+                                                          (passDiagnoses.get(passId)?.jira_ticket_url || '') !== (diagnosisInputs[passId]?.jiraTicketUrl || '');
                                                         return !noteChanged && !diagnosisChanged;
                                                       }
                                                       return !noteChanged;
@@ -1149,7 +1279,8 @@ const HistoryTable: React.FC<HistoryTableProps> = ({
                                                         if (!pass.success) {
                                                           const diagnosisChanged = 
                                                             (passDiagnoses.get(passId)?.symptom || '') !== (diagnosisInputs[passId]?.symptom || '') ||
-                                                            (passDiagnoses.get(passId)?.cause || '') !== (diagnosisInputs[passId]?.cause || '');
+                                                            (passDiagnoses.get(passId)?.cause || '') !== (diagnosisInputs[passId]?.cause || '') ||
+                                                            (passDiagnoses.get(passId)?.jira_ticket_url || '') !== (diagnosisInputs[passId]?.jiraTicketUrl || '');
                                                           return noteChanged || diagnosisChanged ? '#3b82f6' : '#9ca3af';
                                                         }
                                                         return noteChanged ? '#3b82f6' : '#9ca3af';
@@ -1164,7 +1295,8 @@ const HistoryTable: React.FC<HistoryTableProps> = ({
                                                         if (!pass.success) {
                                                           const diagnosisChanged = 
                                                             (passDiagnoses.get(passId)?.symptom || '') !== (diagnosisInputs[passId]?.symptom || '') ||
-                                                            (passDiagnoses.get(passId)?.cause || '') !== (diagnosisInputs[passId]?.cause || '');
+                                                            (passDiagnoses.get(passId)?.cause || '') !== (diagnosisInputs[passId]?.cause || '') ||
+                                                            (passDiagnoses.get(passId)?.jira_ticket_url || '') !== (diagnosisInputs[passId]?.jiraTicketUrl || '');
                                                           return noteChanged || diagnosisChanged ? 'pointer' : 'not-allowed';
                                                         }
                                                         return noteChanged ? 'pointer' : 'not-allowed';
@@ -1182,7 +1314,8 @@ const HistoryTable: React.FC<HistoryTableProps> = ({
                                                       if (!pass.success) {
                                                         const diagnosisChanged = 
                                                           (passDiagnoses.get(passId)?.symptom || '') !== (diagnosisInputs[passId]?.symptom || '') ||
-                                                          (passDiagnoses.get(passId)?.cause || '') !== (diagnosisInputs[passId]?.cause || '');
+                                                          (passDiagnoses.get(passId)?.cause || '') !== (diagnosisInputs[passId]?.cause || '') ||
+                                                          (passDiagnoses.get(passId)?.jira_ticket_url || '') !== (diagnosisInputs[passId]?.jiraTicketUrl || '');
                                                         hasChanges = noteChanged || diagnosisChanged;
                                                       }
                                                       if (hasChanges && !savingMetadata.has(passId) && !metadataSuccess.has(passId)) {
@@ -1197,7 +1330,8 @@ const HistoryTable: React.FC<HistoryTableProps> = ({
                                                       if (!pass.success) {
                                                         const diagnosisChanged = 
                                                           (passDiagnoses.get(passId)?.symptom || '') !== (diagnosisInputs[passId]?.symptom || '') ||
-                                                          (passDiagnoses.get(passId)?.cause || '') !== (diagnosisInputs[passId]?.cause || '');
+                                                          (passDiagnoses.get(passId)?.cause || '') !== (diagnosisInputs[passId]?.cause || '') ||
+                                                          (passDiagnoses.get(passId)?.jira_ticket_url || '') !== (diagnosisInputs[passId]?.jiraTicketUrl || '');
                                                         hasChanges = noteChanged || diagnosisChanged;
                                                       }
                                                       if (hasChanges && !savingMetadata.has(passId) && !metadataSuccess.has(passId)) {
@@ -1233,7 +1367,7 @@ const HistoryTable: React.FC<HistoryTableProps> = ({
                                           <div style={{ flex: '2 1 0%', minWidth: 0 }}>
                                             <PassFiles
                                               pass={pass}
-                                              files={files}
+                                              binaryDataManager={binaryDataManager.current}
                                               viamClient={viamClient}
                                               fetchTimestamp={fetchTimestamp}
                                               expandedFiles={expandedFiles}

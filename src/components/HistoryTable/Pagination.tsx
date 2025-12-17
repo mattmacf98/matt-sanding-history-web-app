@@ -16,8 +16,13 @@ export const Pagination: React.FC<PaginationProps> = ({ pagination, passSummarie
         return null;
     }
     return (
-        <div className="pagination-container">
-          <div className="pagination-controls">
+         <div className="pagination-container">
+          <div className="pagination-controls" style={{
+            display: 'flex',
+            justifyContent: 'center',
+            width: '100%',
+            gap: '4px'
+          }}>
             <button
               className="pagination-button"
               disabled={pagination.currentPage === 1}

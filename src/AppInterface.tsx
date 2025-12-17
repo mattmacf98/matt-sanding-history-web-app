@@ -2,12 +2,12 @@ import React, { useState, useEffect } from 'react';
 import * as VIAM from "@viamrobotics/sdk";
 
 import './AppInterface.css';
-import BeforeAfterModal from './components/BeforeAfterModal';
 import GlobalLoadingIndicator from './components/GlobalLoadingIndicator';
 import { PassNote, PassDiagnosis } from './lib/types';
 import { ResourceSelection } from './components/ResouceSelection';
-import HistoryTable from './components/HistoryTable';
+import BeforeAfterModal from './components/BeforeAfterModal';
 import { Pagination } from './components/HistoryTable/Pagination';
+import HistoryTable from './components/HistoryTable';
 
 interface AppViewProps {
   passSummaries?: any[];
@@ -101,7 +101,6 @@ const AppInterface: React.FC<AppViewProps> = ({
     setBeforeAfterModal(null);
   };
 
-
   return (
     <div className="appInterface">
       <header className="flex items-center sticky top-0 z-10 mb-4 px-4 py-3 border-b bg-zinc-50 shadow-none md:shadow-xs">
@@ -137,8 +136,6 @@ const AppInterface: React.FC<AppViewProps> = ({
       {pagination && (
         <Pagination pagination={pagination} passSummaries={passSummaries} />
       )}
-
-
       {/* Add the modal at the end */}
       {beforeAfterModal && (
         <BeforeAfterModal
