@@ -6,7 +6,7 @@
   "models": [
     {
       "api": "rdk:component:generic",
-      "model": "mattmacf:sanding-history-web-app:sanding-history-web-app"
+      "model": "ncs:sanding-monitoring-web-app:sanding-monitoring-web-app"
     }
   ],
   "first_run": "",

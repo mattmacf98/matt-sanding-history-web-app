@@ -19,7 +19,7 @@ func DistFS() (fs.FS, error) {
 	return fs.Sub(staticFS, "dist")
 }
 
-var Model = resource.ModelNamespace("ncs").WithFamily("sanding-history-web-app").WithModel("sanding-history-web-app")
+var Model = resource.ModelNamespace("ncs").WithFamily("sanding-monitoring-web-app").WithModel("sanding-monitoring-web-app")
 
 func init() {
 	resource.RegisterComponent(
