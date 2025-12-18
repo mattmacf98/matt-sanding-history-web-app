@@ -1,23 +1,19 @@
-.PHONY: create update upload build
+module: dist/index.html meta.json bin/sanding-history-web-app
+	tar czf module.tar.gz meta.json dist bin/sanding-history-web-app
 
-VERSION := 1.0.47
-MODULE_NAME := sanding-monitoring-web-app
-ORG_PUBLIC_NAMESPACE := ncs
-
-build:
+dist/index.html: node_modules
 	npm run build
 
-dev:
-	npm run dev
+node_modules: package.json
+	npm install
 
-create:
-	viam module create --name=${MODULE_NAME} --public-namespace=${ORG_PUBLIC_NAMESPACE}
+setup-linux:
+	which npm > /dev/null 2>&1 || \
+	curl -fsSL https://deb.nodesource.com/setup_20.x | bash - && \
+	apt-get install -y nodejs
 
-update:
-	viam module update --module=meta.json
+bin:
+	mkdir -p bin
 
-upload: build
-	viam module upload --version=${VERSION} --platform=any --public-namespace=${ORG_PUBLIC_NAMESPACE} module
-
-clean-all:
-	git clean -fxd
+bin/sanding-history-web-app: bin *.go cmd/module/*.go *.mod Makefile dist/index.html
+	go build -o bin/sanding-history-web-app cmd/module/cmd.go
