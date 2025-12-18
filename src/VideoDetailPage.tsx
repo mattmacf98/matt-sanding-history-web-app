@@ -1,18 +1,22 @@
-import { Link,useParams, useSearchParams } from 'react-router-dom';
-import { useState, useEffect } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
+import { useParams, useSearchParams, Link } from 'react-router-dom';
 
 import { useViamClients } from './lib/contexts/ViamClientContext';
+import VideoShareButtons from './components/VideoShareButtons';
 
 function VideoDetailPage() {
   const { videoId } = useParams<{ videoId: string }>();
   const [searchParams] = useSearchParams();
   const { locationId, machineName, organizationId, viamClient } = useViamClients();
 
+  const videoRef = useRef<HTMLVideoElement>(null);
+
   const [signedUrl, setSignedUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const fileName = searchParams.get('name');
+  const videoStartingLocation = searchParams.get('loc');
 
   useEffect(() => {
     const fetchSignedUrl = async () => {
@@ -36,6 +40,17 @@ function VideoDetailPage() {
     fetchSignedUrl();
   }, [viamClient, videoId, locationId, organizationId]);
 
+  const setVideoStartingLocation = () => {
+    if (videoStartingLocation && videoRef.current) {
+      const timestamp = parseFloat(videoStartingLocation);
+      if (!isNaN(timestamp)) {
+        videoRef.current.currentTime = timestamp;
+      }
+    }
+  };
+
+  useEffect(setVideoStartingLocation, [videoStartingLocation]);
+
   return (
     <div style={{ padding: '20px', width: '100%', height: '100%' }}>
       <Link to="/" style={{ color: '#3b82f6' }}>Go to sanding history</Link>
@@ -52,16 +67,27 @@ function VideoDetailPage() {
       {error && <p style={{ color: '#dc2626' }}>Error: {error}</p>}
 
       {signedUrl && !loading && !error && (
-        <video
-          src={signedUrl}
-          controls
-          style={{ 
-            width: '100%', 
-            maxWidth: '1000px',
-            aspectRatio: '16/9',
-            borderRadius: '8px'
-          }}
-        />
+        <React.Fragment>
+          <video
+            ref={videoRef}
+            src={signedUrl}
+            controls
+            style={{
+              width: '100%',
+              maxWidth: '1000px',
+              aspectRatio: '16/9',
+              borderRadius: '8px'
+            }}
+            onLoadedMetadata={setVideoStartingLocation}
+          />
+
+          <div className="video-modal-buttons">
+            <VideoShareButtons
+              baseUrl={window.location.href}
+              videoRef={videoRef}
+            />
+          </div>
+        </React.Fragment>
       )}
     </div>
   );

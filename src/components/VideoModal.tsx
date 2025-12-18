@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import * as VIAM from "@viamrobotics/sdk";
 
 import { useViamClients } from '../lib/contexts/ViamClientContext';
+import VideoShareButtons from './VideoShareButtons';
 
 interface VideoModalProps {
   selectedVideo: VIAM.dataApi.BinaryData | null;
@@ -13,6 +14,8 @@ const VideoModal: React.FC<VideoModalProps> = ({
   onClose,
 }) => {
   const { viamClient } = useViamClients();
+
+  const videoRef = useRef<HTMLVideoElement>(null);
 
   const [modalVideoUrl, setModalVideoUrl] = useState<string | null>(null);
   const [loadingModalVideo, setLoadingModalVideo] = useState(false);
@@ -91,6 +94,7 @@ const VideoModal: React.FC<VideoModalProps> = ({
               </>
             ) : modalVideoUrl ? (
               <video
+                ref={videoRef}
                 controls 
                 autoPlay
                 src={modalVideoUrl}
@@ -113,14 +117,21 @@ const VideoModal: React.FC<VideoModalProps> = ({
           </div>
 
           <div className="video-modal-info">
-            <a
-              href={videoPageURL}
-              style={{ color: '#3b82f6' }}
-              target="_blank"
-              rel="noreferrer"
+            <VideoShareButtons
+              baseUrl={videoPageURL}
+              videoRef={videoRef}
             >
-              Go to video
-            </a>
+              <a
+                href={videoPageURL}
+                style={{ color: '#3b82f6' }}
+                target="_blank"
+                title="Go to the video's detail page"
+                rel="noreferrer"
+              >
+                Go to video
+              </a>
+            </VideoShareButtons>
+
             <p>
               <strong>File:</strong>{' '}
               {selectedVideo.metadata?.uri ? (
