@@ -2,7 +2,6 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { CAUSE_OPTIONS, Pass, PassDiagnosis, PassNote, RobotConfigMetadata, Step, SYMPTOM_OPTIONS } from '../../lib/types';
 import { downloadRobotConfig, getPassConfigComparison, getRobotConfigAtTime } from '../../lib/configUtils';
 import { useViamClients } from '../../lib/contexts/ViamClientContext';
-import { formatDurationMs } from '../../lib/uiUtils';
 import { StatusBadge } from '../StatusBadge';
 import { formatDurationToMinutesSeconds, formatTimeDifference } from '../../lib/videoUtils';
 import { getBeforeAfterImages, getStepVideos } from '../../lib/passUtils';
@@ -16,6 +15,7 @@ import { SNAPSHOT_FILE_NAME_PREFIX } from '../../lib/constants';
 import Button from '../Button';
 import { BinaryDataManager } from '../../lib/BinaryDataManager';
 import { BinaryDataFile } from '../../lib/BinaryDataFile';
+import { DaySummaryHeader, DayAggregateData } from './DaySummaryHeader';
 
 interface HistoryTableProps {
     partId: string; //TODO: can thes just be grabbed from the viam context?
@@ -127,19 +127,13 @@ const HistoryTable: React.FC<HistoryTableProps> = ({
 
      // Memoize day aggregates calculation - calculate both execution percentage AND total time
     const dayAggregates = useMemo(() => {
-        return Object.entries(groupedPasses).reduce((acc: Record<string, {
-        totalFactoryTime: number;
-        totalExecutionTime: number;
-        totalOtherStepsTime: number;
-        totalPassCount: number;
-        executionPercentage: number;
-        formattedDate: string;
-        totalBluePoints: number;
-        }>, [dateKey, passes]) => {
+        return Object.entries(groupedPasses).reduce((acc: Record<string, DayAggregateData>, [dateKey, passes]) => {
         let totalFactoryTime = 0;
         let totalExecutionTime = 0;
         let totalOtherStepsTime = 0;
         let totalBluePoints = 0;
+        const symptomCounts = new Map<string, number>();
+        const causeCounts = new Map<string, number>();
 
         // Calculate both time and execution metrics
         passes.forEach(pass => {
@@ -165,6 +159,19 @@ const HistoryTable: React.FC<HistoryTableProps> = ({
             if (pass.blue_point_count !== undefined) {
             totalBluePoints += pass.blue_point_count;
             }
+
+            // Count diagnoses for failed passes
+            if (!pass.success) {
+              const diagnosis = passDiagnoses.get(pass.pass_id);
+              if (diagnosis) {
+                if (diagnosis.symptom) {
+                  symptomCounts.set(diagnosis.symptom, (symptomCounts.get(diagnosis.symptom) || 0) + 1);
+                }
+                if (diagnosis.cause) {
+                  causeCounts.set(diagnosis.cause, (causeCounts.get(diagnosis.cause) || 0) + 1);
+                }
+              }
+            }
         });
 
         const totalStepsTime = totalExecutionTime + totalOtherStepsTime;
@@ -182,12 +189,14 @@ const HistoryTable: React.FC<HistoryTableProps> = ({
             totalPassCount: passes.length,
             executionPercentage,
             formattedDate,
-            totalBluePoints
+            totalBluePoints,
+            symptomCounts,
+            causeCounts
         };
 
         return acc;
         }, {});
-    }, [groupedPasses]);
+    }, [groupedPasses, passDiagnoses]);
     // Compute total execution time (ms) for a pass by summing 'executing' steps
     const getExecutionTimeMs = (pass: Pass): number => {
         if (!pass.steps || pass.steps.length === 0) return 0;
@@ -500,46 +509,9 @@ const HistoryTable: React.FC<HistoryTableProps> = ({
                 </thead>
                 <tbody>
                   {Object.entries(groupedPasses).map(([dateKey, passes], dayIndex) => {
-                    const {
-                      totalFactoryTime,
-                      totalExecutionTime,
-                      totalOtherStepsTime,
-                      totalPassCount,
-                      executionPercentage,
-                      formattedDate
-                    } = dayAggregates[dateKey];
-
                     return (
                       <React.Fragment key={dateKey}>
-                        <tr className="day-summary-header">
-                          <td colSpan={11}>
-                            <div className="day-summary-content">
-                              <div className="day-summary-date">{formattedDate}</div>
-                              <div className="day-summary-stats">
-                                <div className="day-summary-item">
-                                  <span className="day-summary-label">Total Passes</span>
-                                  <span className="day-summary-value">{totalPassCount}</span>
-                                </div>
-                                <div className="day-summary-item">
-                                  <span className="day-summary-label">Total Time</span>
-                                  <span className="day-summary-value">{formatDurationMs(totalFactoryTime)}</span>
-                                </div>
-                                <div className="day-summary-item">
-                                  <span className="day-summary-label">Executing Time</span>
-                                  <span className="day-summary-value">{formatDurationMs(totalExecutionTime)}</span>
-                                </div>
-                                <div className="day-summary-item">
-                                  <span className="day-summary-label">Other Steps Time</span>
-                                  <span className="day-summary-value">{formatDurationMs(totalOtherStepsTime)}</span>
-                                </div>
-                                <div className="day-summary-item">
-                                  <span className="day-summary-label">Execution %</span>
-                                  <span className="day-summary-value">{executionPercentage.toFixed(1)}%</span>
-                                </div>
-                              </div>
-                            </div>
-                          </td>
-                        </tr>
+                        <DaySummaryHeader data={dayAggregates[dateKey]} />
                         {passes.map((pass: Pass, passIndex: number) => {
                           const globalIndex = `${dayIndex}-${passIndex}`;
                           const passId = pass.pass_id;

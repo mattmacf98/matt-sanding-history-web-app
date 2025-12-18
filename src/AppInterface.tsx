@@ -13,7 +13,6 @@ import {
   formatTimeDifference,
 } from './lib/videoUtils';
 import { getBeforeAfterImages, getStepVideos } from './lib/passUtils';
-import { formatDurationMs } from './lib/uiUtils';
 import { getPassMetadataManager } from './lib/passMetadataManager';
 import {
   getRobotConfigAtTime,
@@ -26,6 +25,7 @@ import RenderIf from './components/RenderIf';
 import { BinaryDataManager } from './lib/BinaryDataManager';
 import { BinaryDataFile } from './lib/BinaryDataFile';
 import { SNAPSHOT_FILE_NAME_PREFIX } from './lib/constants';
+import { DaySummaryHeader, DayAggregateData } from './components/HistoryTable/DaySummaryHeader';
 
 
 interface PassFilesProps {
@@ -639,19 +639,13 @@ const AppInterface: React.FC<AppViewProps> = ({
 
   // Memoize day aggregates calculation - calculate both execution percentage AND total time
   const dayAggregates = useMemo(() => {
-    return Object.entries(groupedPasses).reduce((acc: Record<string, {
-      totalFactoryTime: number;
-      totalExecutionTime: number;
-      totalOtherStepsTime: number;
-      totalPassCount: number;
-      executionPercentage: number;
-      formattedDate: string;
-      totalBluePoints: number;
-    }>, [dateKey, passes]) => {
+    return Object.entries(groupedPasses).reduce((acc: Record<string, DayAggregateData>, [dateKey, passes]) => {
       let totalFactoryTime = 0;
       let totalExecutionTime = 0;
       let totalOtherStepsTime = 0;
       let totalBluePoints = 0;
+      const symptomCounts = new Map<string, number>();
+      const causeCounts = new Map<string, number>();
 
       // Calculate both time and execution metrics
       passes.forEach(pass => {
@@ -677,6 +671,19 @@ const AppInterface: React.FC<AppViewProps> = ({
         if (pass.blue_point_count !== undefined) {
           totalBluePoints += pass.blue_point_count;
         }
+
+        // Count diagnoses for failed passes
+        if (!pass.success) {
+          const diagnosis = passDiagnoses.get(pass.pass_id);
+          if (diagnosis) {
+            if (diagnosis.symptom) {
+              symptomCounts.set(diagnosis.symptom, (symptomCounts.get(diagnosis.symptom) || 0) + 1);
+            }
+            if (diagnosis.cause) {
+              causeCounts.set(diagnosis.cause, (causeCounts.get(diagnosis.cause) || 0) + 1);
+            }
+          }
+        }
       });
 
       const totalStepsTime = totalExecutionTime + totalOtherStepsTime;
@@ -694,12 +701,14 @@ const AppInterface: React.FC<AppViewProps> = ({
         totalPassCount: passes.length,
         executionPercentage,
         formattedDate,
-        totalBluePoints
+        totalBluePoints,
+        symptomCounts,
+        causeCounts
       };
 
       return acc;
     }, {});
-  }, [groupedPasses]);
+  }, [groupedPasses, passDiagnoses]);
 
   const toggleRowExpansion = (index: string) => {
     const newExpandedRows = new Set(expandedRows);
@@ -936,46 +945,9 @@ const AppInterface: React.FC<AppViewProps> = ({
                 </thead>
                 <tbody>
                   {Object.entries(groupedPasses).map(([dateKey, passes], dayIndex) => {
-                    const {
-                      totalFactoryTime,
-                      totalExecutionTime,
-                      totalOtherStepsTime,
-                      totalPassCount,
-                      executionPercentage,
-                      formattedDate
-                    } = dayAggregates[dateKey];
-
                     return (
                       <React.Fragment key={dateKey}>
-                        <tr className="day-summary-header">
-                          <td colSpan={11}>
-                            <div className="day-summary-content">
-                              <div className="day-summary-date">{formattedDate}</div>
-                              <div className="day-summary-stats">
-                                <div className="day-summary-item">
-                                  <span className="day-summary-label">Total Passes</span>
-                                  <span className="day-summary-value">{totalPassCount}</span>
-                                </div>
-                                <div className="day-summary-item">
-                                  <span className="day-summary-label">Total Time</span>
-                                  <span className="day-summary-value">{formatDurationMs(totalFactoryTime)}</span>
-                                </div>
-                                <div className="day-summary-item">
-                                  <span className="day-summary-label">Executing Time</span>
-                                  <span className="day-summary-value">{formatDurationMs(totalExecutionTime)}</span>
-                                </div>
-                                <div className="day-summary-item">
-                                  <span className="day-summary-label">Other Steps Time</span>
-                                  <span className="day-summary-value">{formatDurationMs(totalOtherStepsTime)}</span>
-                                </div>
-                                <div className="day-summary-item">
-                                  <span className="day-summary-label">Execution %</span>
-                                  <span className="day-summary-value">{executionPercentage.toFixed(1)}%</span>
-                                </div>
-                              </div>
-                            </div>
-                          </td>
-                        </tr>
+                        <DaySummaryHeader data={dayAggregates[dateKey]} />
                         {passes.map((pass: Pass, passIndex: number) => {
                           const globalIndex = `${dayIndex}-${passIndex}`;
                           const passId = pass.pass_id;
