@@ -15,5 +15,5 @@ setup-linux:
 bin:
 	mkdir -p bin
 
-bin/sanding-history-web-app: bin *.go cmd/module/*.go *.mod Makefile dist/index.html
-	go build -o bin/sanding-history-web-app cmd/module/cmd.go
+bin/sanding-history-web-app: bin module.go
+	go build -o bin/sanding-history-web-app module.go
