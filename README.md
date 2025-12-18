@@ -60,6 +60,9 @@ A React TypeScript application for monitoring and analyzing sanding pass history
 - @vitejs/plugin-react 4.0.0
 - Type definitions for React, React DOM, React Router DOM, and js-cookie
 
+# Making Changes
+
+When making a change to this repo, please run `npx @changesets/cli` to properly update the package.json using semantic versioning.
 ## (TEMP) App Refactor
 
 We are actively refactoring the application so that `NewAppInterface` will become the main app component, replacing the legacy `AppInterface` structure. As part of this process, large sections of `AppInterface.tsx` are being split into smaller, reusable components.
