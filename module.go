@@ -6,6 +6,8 @@ import (
 	"go.viam.com/rdk/resource"
 )
 
+// APP-14732 this is a temporary work around until we can have the viam build gh action deploy with only a viam app
+
 func main() {
 	module.ModularMain(
 		resource.APIModel{generic.API, Model},
