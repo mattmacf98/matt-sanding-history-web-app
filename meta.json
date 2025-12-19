@@ -3,14 +3,6 @@
   "visibility": "public",
   "url": "https://github.com/viam-labs/sanding-history-web-app",
   "description": "A web app to monitor sanding",
-  "models": [
-    {
-      "api": "rdk:component:generic",
-      "model": "ncs:sanding-monitoring-web-app:sanding-monitoring-web-app"
-    }
-  ],
-  "first_run": "",
-  "entrypoint": "./bin/sanding-history-web-app",
   "build": {
       "build": "make module",
       "setup": "make setup-linux",
