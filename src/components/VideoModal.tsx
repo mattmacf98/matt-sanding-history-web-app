@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import * as VIAM from "@viamrobotics/sdk";
 
 import { useViamClients } from '../lib/contexts/ViamClientContext';
+import VideoShareButtons from './VideoShareButtons';
 
 interface VideoModalProps {
   selectedVideo: VIAM.dataApi.BinaryData | null;
@@ -14,8 +15,22 @@ const VideoModal: React.FC<VideoModalProps> = ({
 }) => {
   const { viamClient } = useViamClients();
 
+  const videoRef = useRef<HTMLVideoElement>(null);
+
   const [modalVideoUrl, setModalVideoUrl] = useState<string | null>(null);
   const [loadingModalVideo, setLoadingModalVideo] = useState(false);
+
+  const videoPageURL = React.useMemo(() => {
+    if (!selectedVideo) {
+      return '';
+    }
+    
+    const videoId = selectedVideo.metadata!.binaryDataId.split('/').pop();
+    const fileName = selectedVideo.metadata!.fileName;
+    const baseUrl = `${window.location.origin}${window.location.pathname}`;
+    
+    return `${baseUrl}#/videos/${videoId}?name=${encodeURIComponent(fileName)}`;
+  }, [selectedVideo]);
 
   const closeVideoModal = () => {
     setModalVideoUrl(null);
@@ -79,6 +94,7 @@ const VideoModal: React.FC<VideoModalProps> = ({
               </>
             ) : modalVideoUrl ? (
               <video
+                ref={videoRef}
                 controls 
                 autoPlay
                 src={modalVideoUrl}
@@ -101,6 +117,21 @@ const VideoModal: React.FC<VideoModalProps> = ({
           </div>
 
           <div className="video-modal-info">
+            <VideoShareButtons
+              baseUrl={videoPageURL}
+              videoRef={videoRef}
+            >
+              <a
+                href={videoPageURL}
+                style={{ color: '#3b82f6' }}
+                target="_blank"
+                title="Go to the video's detail page"
+                rel="noreferrer"
+              >
+                Go to video
+              </a>
+            </VideoShareButtons>
+
             <p>
               <strong>File:</strong>{' '}
               {selectedVideo.metadata?.uri ? (

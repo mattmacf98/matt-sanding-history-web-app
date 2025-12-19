@@ -1020,9 +1020,20 @@ button:focus {
     Consolas, "Courier New", monospace;
 }
 
+.video-modal-buttons {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
+}
+
 .video-modal-button.primary {
-  background-color: #007bff;
+  padding: 6px 8px;
+  font-size: 12px;
+  background-color: #3b82f6;
   color: white;
+  border: none;
+  border-radius: 4px;
 }
 
 .video-modal-button.primary:hover {
@@ -1030,8 +1041,12 @@ button:focus {
 }
 
 .video-modal-button.secondary {
+  padding: 6px 8px;
+  font-size: 12px;
   background-color: #6c757d;
   color: white;
+  border: none;
+  border-radius: 4px;
 }
 
 .video-modal-button.secondary:hover {

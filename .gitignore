@@ -7,6 +7,8 @@ yarn-error.log*
 # Production builds
 build/
 dist/
+bin/
+module.tar.gz
 
 # Environment variables
 .env

@@ -87,7 +87,7 @@ export class VideoPollingManager {
     this.isPolling = true;
     const pollInterval = 5000; // Poll every 5 seconds
 
-    this.pollInterval = setInterval(async () => {
+    this.pollInterval = window.setInterval(async () => {
       if (this.activeRequests.size === 0) {
         this.stopPolling();
         return;
@@ -141,7 +141,7 @@ export class VideoPollingManager {
 
   private stopPolling() {
     if (this.pollInterval) {
-      clearInterval(this.pollInterval);
+      window.clearInterval(this.pollInterval);
       this.pollInterval = null;
     }
     this.isPolling = false;
@@ -204,7 +204,7 @@ export class VideoPollingManager {
   cleanupAll(): void {
     // Stop the main polling interval
     if (this.pollInterval) {
-      clearInterval(this.pollInterval);
+      window.clearInterval(this.pollInterval);
       this.pollInterval = null;
     }
 

@@ -10,6 +10,6 @@ export default defineConfig({
   },
   base: "./",
   build: {
-    outDir: "module/apps/dist",
+    outDir: "dist",
   },
 })
