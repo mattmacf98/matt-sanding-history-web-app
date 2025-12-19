@@ -1,5 +1,11 @@
 # sanding-monitoring-web-app
 
+## 1.0.50
+
+### Patch Changes
+
+- d1c6d57: remove go module
+
 ## 1.0.49
 
 ### Patch Changes
