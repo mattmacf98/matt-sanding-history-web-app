@@ -1,9 +1,5 @@
 import React from 'react';
-import EmbedMotionTools from '../MotionTools/embed-motion-tools.svelte';
-import useSvelte from '../../lib/hooks/useSvelte';
-
-// Create the wrapper once at module level, not on every render
-const MotionTools = useSvelte(EmbedMotionTools);
+import EmbededMotionTools from '../MotionTools/EmbededMotionTools';
 
 interface SnapshotModalProps {
   close: () => void;
@@ -57,7 +53,7 @@ const SnapshotModal: React.FC<SnapshotModalProps> = ({ close }) => {
           }}
           aria-label="Close"
         >&times;</button>
-        <MotionTools />
+        <EmbededMotionTools name="Snapshot Modal Test" />
       </div>
     </div>
   );
