@@ -16,6 +16,7 @@ import Button from '../Button';
 import { BinaryDataManager } from '../../lib/BinaryDataManager';
 import { BinaryDataFile } from '../../lib/BinaryDataFile';
 import { DaySummaryHeader, DayAggregateData } from './DaySummaryHeader';
+import SnapshotModal from './SnapshotModal';
 
 interface HistoryTableProps {
     partId: string; //TODO: can thes just be grabbed from the viam context?
@@ -69,6 +70,7 @@ const HistoryTable: React.FC<HistoryTableProps> = ({
     const [savingMetadata, setSavingMetadata] = useState<Set<string>>(new Set());
     const [debouncedFileSearchInputs, setDebouncedFileSearchInputs] = useState<Record<string, string>>({});
     const [jiraValidationErrors, setJiraValidationErrors] = useState<Record<string, string>>({});
+    const [testModalOpen, setTestModalOpen] = useState(false);
     const binaryDataManager = useRef<BinaryDataManager>(new BinaryDataManager());
 
     useEffect(() => {
@@ -491,6 +493,12 @@ const HistoryTable: React.FC<HistoryTableProps> = ({
     // TODO: split mega table component into smaller components (aggregation, row item, expanded row - (step grid, diagnosis section, files section))
     return (
         <div className="viam-table-container">
+          <button onClick={() => setTestModalOpen(true)}>Open Test Modal</button>
+
+          {testModalOpen && (
+            <SnapshotModal close={() => setTestModalOpen(false)} />
+          )}
+
               <table className="viam-table">
                 <thead>
                   <tr>
