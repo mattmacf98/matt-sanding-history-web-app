@@ -28,13 +28,17 @@ const SnapshotModal: React.FC<SnapshotModalProps> = ({ close }) => {
         className="snapshot-modal-content"
         style={{
           background: "#fff",
-          borderRadius: 8,
-          padding: 24,
-          minWidth: 320,
-          maxWidth: "95vw",
-          maxHeight: "90vh",
+          borderRadius: 16,
+          padding: 32,
+          minWidth: "90vw",
+          minHeight: "85vh",
+          maxWidth: "98vw",
+          maxHeight: "98vh",
+          width: "90vw",
+          height: "85vh",
           overflowY: "auto",
-          position: "relative"
+          position: "relative",
+          boxShadow: "0 2px 24px rgba(0,0,0,0.3)"
         }}
         onClick={e => e.stopPropagation()}
       >
@@ -43,17 +47,19 @@ const SnapshotModal: React.FC<SnapshotModalProps> = ({ close }) => {
           className="snapshot-modal-close"
           style={{
             position: "absolute",
-            top: 8,
-            right: 8,
+            top: 16,
+            right: 24,
             background: "transparent",
             border: "none",
-            fontSize: 24,
+            fontSize: 32,
             cursor: "pointer",
             lineHeight: "1"
           }}
           aria-label="Close"
         >&times;</button>
-        <EmbededMotionTools name="Snapshot Modal Test" />
+        <div style={{width: "100%", height: "100%"}}>
+          <EmbededMotionTools name="Snapshot Modal Test" />
+        </div>
       </div>
     </div>
   );

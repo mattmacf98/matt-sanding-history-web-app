@@ -19,6 +19,7 @@
     "@ag-grid-community/core": "^32.3.9",
     "@ag-grid-community/styles": "^32.3.9",
     "@changesets/cli": "^2.29.8",
+    "@tailwindcss/vite": "^4.1.18",
     "@viamrobotics/motion-tools": "^1.1.6",
     "@viamrobotics/sdk": "^0.57.0",
     "@viamrobotics/svelte-sdk": "^1.0.1",
