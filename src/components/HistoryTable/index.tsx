@@ -685,12 +685,12 @@ const HistoryTable: React.FC<HistoryTableProps> = ({
                                       >
                                         {expandedErrors.has(pass.pass_id) 
                                           ? pass.err_string 
-                                          : pass.err_string.length > 200 
-                                            ? `${pass.err_string.substring(0, 200)}...` 
+                                          : pass.err_string.length > 150 
+                                            ? `${pass.err_string.substring(0, 150)}...` 
                                             : pass.err_string
                                         }
                                       </span>
-                                      {pass.err_string.length > 200 && (
+                                      {pass.err_string.length > 150 && (
                                         <button
                                           onClick={(e) => {
                                             e.stopPropagation();
