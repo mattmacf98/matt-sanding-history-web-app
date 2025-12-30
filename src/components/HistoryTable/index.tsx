@@ -504,6 +504,8 @@ const HistoryTable: React.FC<HistoryTableProps> = ({
                     <th>Execution time</th>
                     <th>Blue points</th>
                     <th>Steps</th>
+                    <th>Selected zones</th>
+                    <th>Selected intensity</th>
                     <th>Error</th>
                   </tr>
                 </thead>
@@ -511,7 +513,7 @@ const HistoryTable: React.FC<HistoryTableProps> = ({
                   {Object.entries(groupedPasses).map(([dateKey, passes], dayIndex) => {
                     return (
                       <React.Fragment key={dateKey}>
-                        <DaySummaryHeader data={dayAggregates[dateKey]} />
+                        <DaySummaryHeader data={dayAggregates[dateKey]} colSpan={13} />
                         {passes.map((pass: Pass, passIndex: number) => {
                           const globalIndex = `${dayIndex}-${passIndex}`;
                           const passId = pass.pass_id;
@@ -648,6 +650,27 @@ const HistoryTable: React.FC<HistoryTableProps> = ({
                                   {pass.steps ? `${pass.steps.length} steps` : '—'}
                                 </td>
                                 <td className="text-zinc-700">
+                                  {pass.selected_zones !== undefined ? (() => {
+                                    const zones = Array.isArray(pass.selected_zones) 
+                                      ? pass.selected_zones 
+                                      : [pass.selected_zones];
+                                    
+                                    const zoneNumbers = zones
+                                      .map(zone => {
+                                        const str = String(zone);
+                                        return str.startsWith('zone_') ? str.replace('zone_', '') : str;
+                                      })
+                                      .map(zone => parseInt(zone, 10))
+                                      .filter(num => !isNaN(num))
+                                      .sort((a, b) => a - b);
+                                    
+                                    return zoneNumbers.length > 0 ? zoneNumbers.join(', ') : '—';
+                                  })() : '—'}
+                                </td>
+                                <td className="text-zinc-700">
+                                  {pass.selected_intensity !== undefined ? pass.selected_intensity : '—'}
+                                </td>
+                                <td className="text-zinc-700">
                                   {pass.err_string ? (
                                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '4px' }}>
                                       <span 
@@ -705,7 +728,7 @@ const HistoryTable: React.FC<HistoryTableProps> = ({
                                 </td>
                               </tr>{expandedRows.has(globalIndex) && (
                                 <tr className="expanded-content">
-                                  <td colSpan={11}>
+                                  <td colSpan={13}>
                                     <div className="pass-details">
                                       {/* Build information section moved inside expanded row */}
                                       {pass.build_info && (
