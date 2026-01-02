@@ -16,6 +16,7 @@ import Button from '../Button';
 import { BinaryDataManager } from '../../lib/BinaryDataManager';
 import { BinaryDataFile } from '../../lib/BinaryDataFile';
 import { DaySummaryHeader, DayAggregateData } from './DaySummaryHeader';
+import { constructStepLogUrl } from '../../lib/uiUtils';
 
 interface HistoryTableProps {
     partId: string; //TODO: can thes just be grabbed from the viam context?
@@ -54,7 +55,7 @@ const HistoryTable: React.FC<HistoryTableProps> = ({
     fetchVideos,
     files,
 }) => {
-    const { viamClient } = useViamClients();
+    const { viamClient, organizationId } = useViamClients();
 
     const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
     const [noteInputs, setNoteInputs] = useState<Record<string, string>>({});
@@ -1053,6 +1054,8 @@ const HistoryTable: React.FC<HistoryTableProps> = ({
                                                   fetchTimestamp={fetchTimestamp}
                                                   videoStoreClient={videoStoreClient}
                                                   fetchVideos={fetchVideos}
+                                                  machineId={machineId}
+                                                  organizationId={organizationId}
                                                 />
                                               </div>
                                             );
