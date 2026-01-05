@@ -22,3 +22,23 @@ export const formatDurationMs = (ms: number): JSX.Element => {
     </span>
   );
 };
+
+/**
+ * Constructs a URL to the Viam app logs page filtered to a specific time range.
+ * @param startTime - The start time for the logs.
+ * @param endTime - The end time for the logs.
+ * @param machineId - The machine ID.
+ * @param organizationId - The organization ID.
+ * @returns A URL string to the Viam logs page.
+ */
+export const constructStepLogUrl = (
+  startTime: Date,
+  endTime: Date,
+  machineId: string,
+  organizationId: string
+): string => {
+  const startParam = encodeURIComponent(startTime.toISOString());
+  const endParam = encodeURIComponent(endTime.toISOString());
+  
+  return `https://app.viam.com/machine/${machineId}/logs?start=${startParam}&end=${endParam}&org=${organizationId}`;
+};

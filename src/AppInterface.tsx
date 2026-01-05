@@ -343,7 +343,7 @@ const AppInterface: React.FC<AppViewProps> = ({
   fetchingNotes,
   pagination,
 }) => {
-  const { robotClient, viamClient } = useViamClients();
+  const { robotClient, viamClient, organizationId } = useViamClients();
 
   const [activeRoute, setActiveRoute] = useState('live');
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
@@ -1466,6 +1466,8 @@ const AppInterface: React.FC<AppViewProps> = ({
                                                   fetchTimestamp={fetchTimestamp}
                                                   videoStoreClient={videoStoreClient}
                                                   fetchVideos={fetchVideos}
+                                                  machineId={machineId}
+                                                  organizationId={organizationId}
                                                 />
                                               </div>
                                             );

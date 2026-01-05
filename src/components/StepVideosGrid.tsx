@@ -4,6 +4,7 @@ import VideoModal from "./VideoModal";
 import { Step } from "../lib/types";
 import { generateVideo } from "../lib/videoUtils";
 import { VideoPollingManager } from "../lib/videoPollingManager";
+import { constructStepLogUrl } from "../lib/uiUtils";
 
 
 interface StepVideosGridProps {
@@ -13,6 +14,8 @@ interface StepVideosGridProps {
   step: Step;
   fetchVideos: (start: Date, shouldSetLoadingState: boolean) => Promise<void>;
   fetchTimestamp: Date | null;
+  machineId: string;
+  organizationId: string;
 }
 
 const StepVideosGrid: React.FC<StepVideosGridProps> = ({
@@ -22,6 +25,8 @@ const StepVideosGrid: React.FC<StepVideosGridProps> = ({
   step,
   fetchVideos,
   fetchTimestamp,
+  machineId,
+  organizationId,
 }) => {
   const [selectedVideo, setSelectedVideo] =
     useState<VIAM.dataApi.BinaryData | null>(null);
@@ -120,27 +125,46 @@ const StepVideosGrid: React.FC<StepVideosGridProps> = ({
 
   if (stepVideos.length === 0 && fetchTimestamp && fetchTimestamp > step.start) {
     return (
-      <div className="loading-state" style={{
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: '20px',
-        color: '#6b7280'
-      }}>
-        <div
-          style={{
-            width: '24px',
-            height: '24px',
-            border: '3px solid #e5e7eb',
-            borderTop: '3px solid #3b82f6',
-            borderRadius: '50%',
-            animation: 'spin 1s linear infinite',
-            marginBottom: '8px'
-          }}
-        />
-        <div style={{ fontSize: '14px' }}>Loading videos...</div>
-      </div>
+      <>
+        <div className="loading-state" style={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '20px',
+          color: '#6b7280'
+        }}>
+          <div
+            style={{
+              width: '24px',
+              height: '24px',
+              border: '3px solid #e5e7eb',
+              borderTop: '3px solid #3b82f6',
+              borderRadius: '50%',
+              animation: 'spin 1s linear infinite',
+              marginBottom: '8px'
+            }}
+          />
+          <div style={{ fontSize: '14px' }}>Loading videos...</div>
+        </div>
+        {machineId && organizationId && (step.end.getTime() - step.start.getTime()) >= 1000 && (
+          <a
+            href={constructStepLogUrl(step.start, step.end, machineId, organizationId)}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              display: 'block',
+              marginTop: '8px',
+              color: '#3b82f6',
+              fontSize: '12px',
+              textDecoration: 'underline',
+              textAlign: 'center',
+            }}
+          >
+            View logs for this step
+          </a>
+        )}
+      </>
     );
   }
 
@@ -213,6 +237,23 @@ const StepVideosGrid: React.FC<StepVideosGridProps> = ({
             </div>
           )}
         </div>
+        {machineId && organizationId && (step.end.getTime() - step.start.getTime()) >= 1000 && (
+          <a
+            href={constructStepLogUrl(step.start, step.end, machineId, organizationId)}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              display: 'block',
+              marginTop: '8px',
+              color: '#3b82f6',
+              fontSize: '12px',
+              textDecoration: 'underline',
+              textAlign: 'center',
+            }}
+          >
+            View logs for this step
+          </a>
+        )}
       </>
     );
   }
@@ -262,6 +303,23 @@ const StepVideosGrid: React.FC<StepVideosGridProps> = ({
           </div>
         ))}
       </div>
+      {machineId && organizationId && (step.end.getTime() - step.start.getTime()) >= 1000 && (
+        <a
+          href={constructStepLogUrl(step.start, step.end, machineId, organizationId)}
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{
+            display: 'block',
+            marginTop: '8px',
+            color: '#3b82f6',
+            fontSize: '12px',
+            textDecoration: 'underline',
+            textAlign: 'center',
+          }}
+        >
+          View logs for this step
+        </a>
+      )}
       <VideoModal
         selectedVideo={selectedVideo}
         onClose={closeVideoModal}
