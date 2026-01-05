@@ -40,11 +40,15 @@ export const CollapsedRow = ({
         }
       }}
       aria-expanded={expandedRows.has(globalIndex)}
-      aria-label={`${expandedRows.has(globalIndex) ? 'Collapse' : 'Expand'} details for pass from ${pass.start.toLocaleTimeString()}`}
+      aria-label={`${
+        expandedRows.has(globalIndex) ? 'Collapse' : 'Expand'
+      } details for pass from ${pass.start.toLocaleTimeString()}`}
     >
       <td>
         <span
-          className={`expand-icon ${expandedRows.has(globalIndex) ? 'expanded' : ''}`}
+          className={`expand-icon ${
+            expandedRows.has(globalIndex) ? 'expanded' : ''
+          }`}
           aria-hidden="true"
         >
           ▶
@@ -162,8 +166,8 @@ export const CollapsedRow = ({
                       hasNotes && hasDiagnosis
                         ? 'This pass has notes and diagnosis'
                         : hasNotes
-                          ? 'This pass has notes'
-                          : 'This pass has diagnosis'
+                        ? 'This pass has notes'
+                        : 'This pass has diagnosis'
                     }
                   >
                     📝
@@ -197,6 +201,31 @@ export const CollapsedRow = ({
         {pass.steps ? `${pass.steps.length} steps` : '—'}
       </td>
       <td className="text-zinc-700">
+        {pass.selected_zones !== undefined
+          ? (() => {
+              const zones = Array.isArray(pass.selected_zones)
+                ? pass.selected_zones
+                : [pass.selected_zones]
+
+              const zoneNumbers = zones
+                .map((zone) => {
+                  const str = String(zone)
+                  return str.startsWith('zone_')
+                    ? str.replace('zone_', '')
+                    : str
+                })
+                .map((zone) => parseInt(zone, 10))
+                .filter((num) => !isNaN(num))
+                .sort((a, b) => a - b)
+
+              return zoneNumbers.length > 0 ? zoneNumbers.join(', ') : '—'
+            })()
+          : '—'}
+      </td>
+      <td className="text-zinc-700">
+        {pass.selected_intensity !== undefined ? pass.selected_intensity : '—'}
+      </td>
+      <td className="text-zinc-700">
         {pass.err_string ? (
           <div
             style={{
@@ -218,11 +247,11 @@ export const CollapsedRow = ({
             >
               {expandedErrors.has(pass.pass_id)
                 ? pass.err_string
-                : pass.err_string.length > 150
-                  ? `${pass.err_string.substring(0, 150)}...`
-                  : pass.err_string}
+                : pass.err_string.length > 200
+                ? `${pass.err_string.substring(0, 200)}...`
+                : pass.err_string}
             </span>
-            {pass.err_string.length > 150 && (
+            {pass.err_string.length > 200 && (
               <button
                 onClick={(e) => {
                   e.stopPropagation()

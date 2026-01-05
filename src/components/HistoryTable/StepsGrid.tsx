@@ -14,6 +14,8 @@ interface StepsGridProps {
   imageFiles: Map<string, VIAM.dataApi.BinaryData>
   videoFiles: Map<string, VIAM.dataApi.BinaryData>
   selectedCamera: string
+  machineId: string
+  organizationId: string
   fetchTimestamp: Date | null
   videoStoreClient: VIAM.GenericComponentClient | null
   binaryDataManager: BinaryDataManager
@@ -28,6 +30,8 @@ export const StepsGrid = ({
   imageFiles,
   videoFiles,
   selectedCamera,
+  machineId,
+  organizationId,
   fetchTimestamp,
   videoStoreClient,
   binaryDataManager,
@@ -79,6 +83,8 @@ export const StepsGrid = ({
               fetchTimestamp={fetchTimestamp}
               videoStoreClient={videoStoreClient}
               fetchVideos={fetchVideos}
+              machineId={machineId}
+              organizationId={organizationId}
             />
           </div>
         )

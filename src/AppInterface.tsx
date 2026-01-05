@@ -343,7 +343,7 @@ const AppInterface: React.FC<AppViewProps> = ({
   fetchingNotes,
   pagination,
 }) => {
-  const { robotClient, viamClient } = useViamClients();
+  const { robotClient, viamClient, organizationId } = useViamClients();
 
   const [activeRoute, setActiveRoute] = useState('live');
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
@@ -1098,12 +1098,12 @@ const AppInterface: React.FC<AppViewProps> = ({
                                       >
                                         {expandedErrors.has(pass.pass_id) 
                                           ? pass.err_string 
-                                          : pass.err_string.length > 150 
-                                            ? `${pass.err_string.substring(0, 150)}...` 
+                                          : pass.err_string.length > 200 
+                                            ? `${pass.err_string.substring(0, 200)}...` 
                                             : pass.err_string
                                         }
                                       </span>
-                                      {pass.err_string.length > 150 && (
+                                      {pass.err_string.length > 200 && (
                                         <button
                                           onClick={(e) => {
                                             e.stopPropagation();
@@ -1466,6 +1466,8 @@ const AppInterface: React.FC<AppViewProps> = ({
                                                   fetchTimestamp={fetchTimestamp}
                                                   videoStoreClient={videoStoreClient}
                                                   fetchVideos={fetchVideos}
+                                                  machineId={machineId}
+                                                  organizationId={organizationId}
                                                 />
                                               </div>
                                             );

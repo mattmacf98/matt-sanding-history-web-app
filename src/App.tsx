@@ -222,7 +222,9 @@ function App() {
           err_string: pass.err_string || null,
           build_info: buildInfo,
           blue_point_count: (pass.target_points_count !== undefined && pass.target_points_count !== null) ? Number(pass.target_points_count) : undefined,
-          sanding_distance_mm: (pass.sanding_distance_mm !== undefined && pass.sanding_distance_mm !== null) ? Number(pass.sanding_distance_mm) : undefined
+          sanding_distance_mm: (pass.sanding_distance_mm !== undefined && pass.sanding_distance_mm !== null) ? Number(pass.sanding_distance_mm) : undefined,
+          selected_zones: pass.selected_zones !== undefined && pass.selected_zones !== null ? pass.selected_zones : undefined,
+          selected_intensity: pass.selected_intensity !== undefined && pass.selected_intensity !== null ? String(pass.selected_intensity) : undefined
         };
       });
 

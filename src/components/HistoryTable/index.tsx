@@ -65,7 +65,7 @@ const HistoryTable: React.FC<HistoryTableProps> = ({
   fetchVideos,
   files,
 }) => {
-  const { viamClient } = useViamClients()
+  const { viamClient, organizationId } = useViamClients()
 
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set())
   const [noteInputs, setNoteInputs] = useState<Record<string, string>>({})
@@ -568,6 +568,8 @@ const HistoryTable: React.FC<HistoryTableProps> = ({
             <th>Execution time</th>
             <th>Blue points</th>
             <th>Steps</th>
+            <th>Selected zones</th>
+            <th>Selected intensity</th>
             <th>Error</th>
           </tr>
         </thead>
@@ -575,7 +577,7 @@ const HistoryTable: React.FC<HistoryTableProps> = ({
           {Object.entries(groupedPasses).map(([dateKey, passes], dayIndex) => {
             return (
               <React.Fragment key={dateKey}>
-                <DaySummaryHeader data={dayAggregates[dateKey]} />
+                <DaySummaryHeader data={dayAggregates[dateKey]} colSpan={13} />
                 {passes.map((pass: Pass, passIndex: number) => {
                   const globalIndex = `${dayIndex}-${passIndex}`
                   const passId = pass.pass_id
@@ -626,6 +628,8 @@ const HistoryTable: React.FC<HistoryTableProps> = ({
                                   binaryDataManager={binaryDataManager.current}
                                   fetchVideos={fetchVideos}
                                   openBeforeAfterModal={openBeforeAfterModal}
+                                  machineId={machineId}
+                                  organizationId={organizationId}
                                 />
 
                                 {/* Diagnosis and Notes Section - shows for all passes, diagnosis fields only for failed */}
