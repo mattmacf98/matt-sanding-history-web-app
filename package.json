@@ -1,7 +1,8 @@
 {
   "name": "sanding-monitoring-web-app",
-  "version": "1.1.0",
-  "description": "A React TypeScript application for monitoring and analyzing sanding pass history, integrated with the Viam platform.",
+
+  "version": "1.2.0",
+  "description": "A basic React app with minimal dependencies",
   "type": "module",
   "scripts": {
     "dev": "vite",
