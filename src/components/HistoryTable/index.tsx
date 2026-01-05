@@ -16,7 +16,6 @@ import Button from '../Button';
 import { BinaryDataManager } from '../../lib/BinaryDataManager';
 import { BinaryDataFile } from '../../lib/BinaryDataFile';
 import { DaySummaryHeader, DayAggregateData } from './DaySummaryHeader';
-import { constructStepLogUrl } from '../../lib/uiUtils';
 
 interface HistoryTableProps {
     partId: string; //TODO: can thes just be grabbed from the viam context?
