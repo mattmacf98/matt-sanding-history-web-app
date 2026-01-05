@@ -1,5 +1,11 @@
 # sanding-monitoring-web-app
 
+## 1.4.0
+
+### Minor Changes
+
+- 1b9f770: Replace selected_intensity with selected_num_rounds display
+
 ## 1.3.1
 
 ### Patch Changes
