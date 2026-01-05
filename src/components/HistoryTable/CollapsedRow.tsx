@@ -223,7 +223,7 @@ export const CollapsedRow = ({
           : '—'}
       </td>
       <td className="text-zinc-700">
-        {pass.selected_intensity !== undefined ? pass.selected_intensity : '—'}
+        {pass.selected_num_rounds !== undefined ? pass.selected_num_rounds : '—'}
       </td>
       <td className="text-zinc-700">
         {pass.err_string ? (

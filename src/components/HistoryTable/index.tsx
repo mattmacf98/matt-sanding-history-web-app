@@ -569,7 +569,7 @@ const HistoryTable: React.FC<HistoryTableProps> = ({
             <th>Blue points</th>
             <th>Steps</th>
             <th>Selected zones</th>
-            <th>Selected intensity</th>
+            <th>Selected rounds</th>
             <th>Error</th>
           </tr>
         </thead>

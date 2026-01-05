@@ -21,7 +21,7 @@ export interface Pass {
   blue_point_diff_percent?: number;
   sanding_distance_mm?: number;
   selected_zones?: string | string[];
-  selected_intensity?: string;
+  selected_num_rounds?: number;
 }
 
 export interface PassNote {
