@@ -1,5 +1,11 @@
 # sanding-monitoring-web-app
 
+## 1.3.0
+
+### Minor Changes
+
+- ccc239a: Link to logs from steps
+
 ## 1.2.0
 
 ### Minor Changes
