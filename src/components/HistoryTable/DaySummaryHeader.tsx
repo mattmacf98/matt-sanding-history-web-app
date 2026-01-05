@@ -18,7 +18,7 @@ interface DaySummaryHeaderProps {
   colSpan?: number;
 }
 
-export const DaySummaryHeader: React.FC<DaySummaryHeaderProps> = ({ data, colSpan = 11 }) => {
+export const DaySummaryHeader: React.FC<DaySummaryHeaderProps> = ({ data, colSpan = 13 }) => {
   const {
     totalFactoryTime,
     totalExecutionTime,
