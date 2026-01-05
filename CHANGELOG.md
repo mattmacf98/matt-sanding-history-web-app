@@ -1,5 +1,11 @@
 # sanding-monitoring-web-app
 
+## 1.3.1
+
+### Patch Changes
+
+- c606870: split up historytable component
+
 ## 1.3.0
 
 ### Minor Changes
