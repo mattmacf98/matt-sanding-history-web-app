@@ -10,57 +10,22 @@ interface SnapshotModalProps {
 const SnapshotModal: React.FC<SnapshotModalProps> = ({ close, snapshot }) => {
   return (
     <div
-      className="snapshot-modal-backdrop"
-      style={{
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        width: '100vw',
-        height: '100vh',
-        background: 'rgba(0,0,0,0.5)',
-        zIndex: 1000,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-      }}
+      className="fixed inset-0 w-screen h-screen bg-black/50 z-1000 flex items-center justify-center"
       onClick={close}
     >
       <div
-        className="snapshot-modal-content"
-        style={{
-          background: '#fff',
-          borderRadius: 16,
-          padding: 32,
-          minWidth: '90vw',
-          minHeight: '85vh',
-          maxWidth: '98vw',
-          maxHeight: '98vh',
-          width: '90vw',
-          height: '85vh',
-          overflowY: 'auto',
-          position: 'relative',
-          boxShadow: '0 2px 24px rgba(0,0,0,0.3)',
-        }}
+        className="bg-white rounded-2xl p-8 min-w-[90vw] min-h-[85vh] max-w-[98vw] max-h-[98vh] w-[90vw] h-[85vh] overflow-y-auto relative shadow-[0_2px_24px_rgba(0,0,0,0.3)]"
         onClick={(e) => e.stopPropagation()}
       >
         <button
+          type="button"
           onClick={close}
-          className="snapshot-modal-close"
-          style={{
-            position: 'absolute',
-            top: 16,
-            right: 24,
-            background: 'transparent',
-            border: 'none',
-            fontSize: 32,
-            cursor: 'pointer',
-            lineHeight: '1',
-          }}
+          className="absolute top-4 right-6 bg-transparent border-none text-[32px] cursor-pointer leading-none"
           aria-label="Close"
         >
           &times;
         </button>
-        <div style={{ width: '100%', height: '100%' }}>
+        <div className="w-full h-full">
           <SnapshotComponent snapshot={snapshot} />
         </div>
       </div>
