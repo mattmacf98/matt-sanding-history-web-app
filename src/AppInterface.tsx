@@ -20,12 +20,12 @@ import {
   getPassConfigComparison,
 } from './lib/configUtils';
 import { Pass, PassNote, PassDiagnosis, Step, RobotConfigMetadata, SYMPTOM_OPTIONS, CAUSE_OPTIONS } from './lib/types';
-import Button from './components/Button';
 import RenderIf from './components/RenderIf';
 import { BinaryDataManager } from './lib/BinaryDataManager';
 import { BinaryDataFile } from './lib/BinaryDataFile';
 import { SNAPSHOT_FILE_NAME_PREFIX } from './lib/constants';
 import { DaySummaryHeader, DayAggregateData } from './components/HistoryTable/DaySummaryHeader';
+import { StepsVizSnapshotCard } from './components/HistoryTable/StepsVizSnapshotCard';
 
 
 interface PassFilesProps {
@@ -1473,17 +1473,13 @@ const AppInterface: React.FC<AppViewProps> = ({
                                             );
                                           })}
                                           <RenderIf condition={binaryDataManger.current.searchBinaryDataByFileName(SNAPSHOT_FILE_NAME_PREFIX).length > 0}>
-                                            <div className="step-card">
-                                              <div className="step-name">View Snapshot</div>
-                                              <p>
-                                                Load and display a 3D scene from a snapshot file.
-                                                </p>
-                                                <div style={{ display: "flex", justifyContent: "center", alignItems: "center" }}>
-                                                  <Button>
-                                                    View
-                                                  </Button>
-                                                </div>
-                                            </div>
+                                            <StepsVizSnapshotCard
+                                              snapshotFile={
+                                                binaryDataManger.current.searchBinaryDataByFileName(
+                                                  SNAPSHOT_FILE_NAME_PREFIX
+                                                )[0]
+                                              }
+                                            />
                                           </RenderIf>
                                           
                                           

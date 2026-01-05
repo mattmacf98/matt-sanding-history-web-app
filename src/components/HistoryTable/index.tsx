@@ -22,7 +22,6 @@ import { CollapsedRow } from './CollapsedRow'
 import { PassInfo } from './PassInfo'
 import { Diagnosis } from './Diagnosis'
 import { StepsGrid } from './StepsGrid'
-import SnapshotModal from './SnapshotModal';
 
 interface HistoryTableProps {
   partId: string //TODO: can thes just be grabbed from the viam context?
@@ -67,7 +66,6 @@ const HistoryTable: React.FC<HistoryTableProps> = ({
   files,
 }) => {
   const { viamClient, organizationId } = useViamClients()
-
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set())
   const [noteInputs, setNoteInputs] = useState<Record<string, string>>({})
   const [fileSearchInputs, setFileSearchInputs] = useState<
@@ -553,15 +551,8 @@ const HistoryTable: React.FC<HistoryTableProps> = ({
     }
   }
 
-  // TODO: split mega table component into smaller components (aggregation, row item, expanded row - (step grid, diagnosis section, files section))
   return (
     <div className="viam-table-container">
-          <button onClick={() => setTestModalOpen(true)}>Open Test Modal</button>
-
-          {testModalOpen && (
-            <SnapshotModal close={() => setTestModalOpen(false)} />
-          )}
-
       <table className="viam-table">
         <thead>
           <tr>

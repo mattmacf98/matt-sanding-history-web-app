@@ -1,1 +1,1 @@
-export const SNAPSHOT_FILE_NAME_PREFIX = "snapshot_";
+export const SNAPSHOT_FILE_NAME_PREFIX = 'visualization_snapshot_'
