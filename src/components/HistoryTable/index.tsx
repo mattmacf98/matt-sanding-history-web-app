@@ -600,7 +600,7 @@ const HistoryTable: React.FC<HistoryTableProps> = ({
                       />
                       {expandedRows.has(globalIndex) && (
                         <tr className="expanded-content">
-                          <td colSpan={11}>
+                          <td colSpan={13}>
                             <div className="pass-details">
                               {/* Build information section moved inside expanded row */}
                               <RenderIf
