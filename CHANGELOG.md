@@ -1,5 +1,11 @@
 # sanding-monitoring-web-app
 
+## 1.4.1
+
+### Patch Changes
+
+- ed7b41d: fix expanded layout colspans
+
 ## 1.4.0
 
 ### Minor Changes
