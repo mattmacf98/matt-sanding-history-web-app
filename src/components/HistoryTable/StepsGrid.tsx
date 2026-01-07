@@ -3,10 +3,10 @@ import RenderIf from '../RenderIf'
 import * as VIAM from '@viamrobotics/sdk'
 import { StepImagesGrid } from './StepImagesGrid'
 import StepVideosGrid from '../StepVideosGrid'
-import Button from '../Button'
 import { formatDurationToMinutesSeconds } from '../../lib/videoUtils'
 import { getStepVideos } from '../../lib/passUtils'
 import { BinaryDataManager } from '../../lib/BinaryDataManager'
+import { StepsVizSnapshotCard } from './StepsVizSnapshotCard'
 import { SNAPSHOT_FILE_NAME_PREFIX } from '../../lib/constants'
 
 interface StepsGridProps {
@@ -98,19 +98,13 @@ export const StepsGrid = ({
           ).length > 0
         }
       >
-        <div className="step-card">
-          <div className="step-name">View Snapshot</div>
-          <p>Load and display a 3D scene from a snapshot file.</p>
-          <div
-            style={{
-              display: 'flex',
-              justifyContent: 'center',
-              alignItems: 'center',
-            }}
-          >
-            <Button>View</Button>
-          </div>
-        </div>
+        <StepsVizSnapshotCard
+          snapshotFile={
+            binaryDataManager.searchBinaryDataByFileName(
+              SNAPSHOT_FILE_NAME_PREFIX
+            )[0]
+          }
+        />
       </RenderIf>
     </div>
   )

@@ -66,7 +66,6 @@ const HistoryTable: React.FC<HistoryTableProps> = ({
   files,
 }) => {
   const { viamClient, organizationId } = useViamClients()
-
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set())
   const [noteInputs, setNoteInputs] = useState<Record<string, string>>({})
   const [fileSearchInputs, setFileSearchInputs] = useState<
@@ -552,7 +551,6 @@ const HistoryTable: React.FC<HistoryTableProps> = ({
     }
   }
 
-  // TODO: split mega table component into smaller components (aggregation, row item, expanded row - (step grid, diagnosis section, files section))
   return (
     <div className="viam-table-container">
       <table className="viam-table">

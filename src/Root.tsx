@@ -1,14 +1,16 @@
-import { HashRouter, Routes, Route } from 'react-router-dom';
+import { HashRouter, Routes, Route } from 'react-router-dom'
 
-import App from './App';
-import { EnvironmentProvider } from './lib/contexts/EnvironmentContext';
-import { ViamClientProvider } from './lib/contexts/ViamClientContext';
-import VideoDetailPage from './VideoDetailPage';
+import App from './App'
+import { EnvironmentProvider } from './lib/contexts/EnvironmentContext'
+import { ViamClientProvider } from './lib/contexts/ViamClientContext'
+import VideoDetailPage from './VideoDetailPage'
+import { ModalProvider } from './lib/contexts/ModalContext'
 
 function Root() {
   return (
     <EnvironmentProvider>
-        <ViamClientProvider>
+      <ViamClientProvider>
+        <ModalProvider>
           <HashRouter>
             <Routes>
               {/* Main list view - served at /machine/:machineInfo#/ */}
@@ -17,10 +19,11 @@ function Root() {
               {/* Video detail view - served at /machine/:machineInfo#/videos/:videoId */}
               <Route path="/videos/:videoId" element={<VideoDetailPage />} />
             </Routes>
-        </HashRouter>
-        </ViamClientProvider>
+          </HashRouter>
+        </ModalProvider>
+      </ViamClientProvider>
     </EnvironmentProvider>
-  );
+  )
 }
 
-export default Root;
+export default Root

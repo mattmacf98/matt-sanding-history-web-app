@@ -16,14 +16,22 @@
   },
   "dependencies": {
     "@changesets/cli": "^2.29.8",
+    "@tailwindcss/vite": "^4.1.18",
+    "@viamrobotics/motion-tools": "1.2.1",
+    "@viamrobotics/svelte-sdk": "^1.0.1",
+    "@viamrobotics/prime-core": "^0.1.12",
+    "@tanstack/svelte-query": "^5.69.0",
     "@viamrobotics/sdk": "^0.57.0",
     "js-cookie": "^3.0.5",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "react-router-dom": "^7.10.1"
+    "react-router-dom": "^7.10.1",
+    "tailwind-merge": "^3.4.0",
+    "tailwindcss": "^4.1.18"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.2",
+    "@sveltejs/vite-plugin-svelte": "^6.2.1",
     "@types/js-cookie": "^3.0.6",
     "@types/react": "^18.2.0",
     "@types/react-dom": "^18.2.0",
@@ -35,8 +43,9 @@
     "globals": "^16.5.0",
     "jiti": "^2.6.1",
     "prettier": "^3.7.4",
+    "svelte": "^5.46.0",
     "typescript": "^5.0.0",
     "typescript-eslint": "^8.50.0",
-    "vite": "^4.4.0"
+    "vite": "^7.3.0"
   }
 }
