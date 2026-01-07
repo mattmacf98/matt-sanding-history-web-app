@@ -6,8 +6,8 @@ import StepVideosGrid from '../StepVideosGrid'
 import { formatDurationToMinutesSeconds } from '../../lib/videoUtils'
 import { getStepVideos } from '../../lib/passUtils'
 import { BinaryDataManager } from '../../lib/BinaryDataManager'
-import { SNAPSHOT_FILE_NAME_PREFIX } from '../../lib/constants'
 import { StepsVizSnapshotCard } from './StepsVizSnapshotCard'
+import { SNAPSHOT_FILE_NAME_PREFIX } from '../../lib/constants'
 
 interface StepsGridProps {
   pass: Pass

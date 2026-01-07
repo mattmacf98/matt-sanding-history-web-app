@@ -26,8 +26,8 @@ export const StepsVizSnapshotCard = ({
           onClick={() => {
             openModal({
               type: ModalType.SNAPSHOT,
-              snapshot: new SnapshotProto(
-                snapshotFile.binaryData.toJson() as Partial<SnapshotProto>
+              snapshot: SnapshotProto.fromBinary(
+                snapshotFile.binaryData.binary
               ),
             })
           }}

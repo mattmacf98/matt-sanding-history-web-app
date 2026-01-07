@@ -1,6 +1,7 @@
 import React from 'react'
 import SnapshotComponent from './Snapshot/Snapshot'
 import { SnapshotProto } from '@viamrobotics/motion-tools/lib'
+import { useEffect } from 'react'
 
 interface SnapshotModalProps {
   close: () => void
@@ -8,6 +9,20 @@ interface SnapshotModalProps {
 }
 
 const SnapshotModal: React.FC<SnapshotModalProps> = ({ close, snapshot }) => {
+  useEffect(() => {
+    const handleEscapeKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        close()
+      }
+    }
+
+    document.addEventListener('keydown', handleEscapeKey)
+
+    return () => {
+      document.removeEventListener('keydown', handleEscapeKey)
+    }
+  }, [])
+
   return (
     <div
       className="fixed inset-0 w-screen h-screen bg-black/50 z-1000 flex items-center justify-center"
