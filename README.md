@@ -63,6 +63,11 @@ A React TypeScript application for monitoring and analyzing sanding pass history
 # Making Changes
 
 When making a change to this repo, please run `npx @changesets/cli` to properly update the package.json using semantic versioning.
+
+run `npm run start` to run the production build of the app locally and also ensure you start a module proxy `viam module local-app-testing --app-url http://localhost:3000 --machine-id <MACHINE_ID>`
+
+IMPORTANT: until there is proper CI for beta env deployment, please check your change once it is deployed to production to ensure there are no regressions that were not detectable in dev
+
 ## (TEMP) App Refactor
 
 We are actively refactoring the application so that `NewAppInterface` will become the main app component, replacing the legacy `AppInterface` structure. As part of this process, large sections of `AppInterface.tsx` are being split into smaller, reusable components.

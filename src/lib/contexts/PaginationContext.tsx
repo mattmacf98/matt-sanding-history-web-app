@@ -33,19 +33,22 @@ export function PaginationProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     // Get sorted day keys (dates)
-    const sortedDays = Object.keys(passSummariesByDay).sort().reverse() // Most recent first
+    const nextSortedDays = Object.keys(passSummariesByDay).sort().reverse() // Most recent first
 
     // Paginate by days
     const indexOfLastDay = currentPage * DAYS_PER_PAGE
     const indexOfFirstDay = indexOfLastDay - DAYS_PER_PAGE
-    const currentDays = sortedDays.slice(indexOfFirstDay, indexOfLastDay)
+    const nextCurrentDays = nextSortedDays.slice(
+      indexOfFirstDay,
+      indexOfLastDay
+    )
 
-    const totalPages = Math.ceil(sortedDays.length / DAYS_PER_PAGE)
+    const nextTotalPages = Math.ceil(nextSortedDays.length / DAYS_PER_PAGE)
 
-    setTotalPages(totalPages)
-    setSortedDays(sortedDays)
+    setTotalPages(nextTotalPages)
+    setSortedDays(nextSortedDays)
     setTotalEntries(passSummaries.length)
-    setCurrentNumDaysDisplayed(currentDays.length)
+    setCurrentNumDaysDisplayed(nextCurrentDays.length)
   }, [passSummariesByDay, passSummaries])
 
   return (
