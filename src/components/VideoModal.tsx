@@ -1,88 +1,93 @@
-import React, { useRef, useState, useEffect } from 'react';
-import * as VIAM from "@viamrobotics/sdk";
+import React, { useRef, useState, useEffect } from 'react'
+import * as VIAM from '@viamrobotics/sdk'
 
-import { useViamClients } from '../lib/contexts/ViamClientContext';
-import VideoShareButtons from './VideoShareButtons';
+import { useViamClients } from '../lib/contexts/ViamClientContext'
+import VideoShareButtons from './VideoShareButtons'
 
 interface VideoModalProps {
-  selectedVideo: VIAM.dataApi.BinaryData | null;
-  onClose: () => void;
+  selectedVideo: VIAM.dataApi.BinaryData | null
+  onClose: () => void
 }
 
-const VideoModal: React.FC<VideoModalProps> = ({ 
-  selectedVideo, 
-  onClose,
-}) => {
-  const { viamClient } = useViamClients();
+const VideoModal: React.FC<VideoModalProps> = ({ selectedVideo, onClose }) => {
+  const { viamClient } = useViamClients()
 
-  const videoRef = useRef<HTMLVideoElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null)
 
-  const [modalVideoUrl, setModalVideoUrl] = useState<string | null>(null);
-  const [loadingModalVideo, setLoadingModalVideo] = useState(false);
+  const [modalVideoUrl, setModalVideoUrl] = useState<string | null>(null)
+  const [loadingModalVideo, setLoadingModalVideo] = useState(false)
 
   const videoPageURL = React.useMemo(() => {
     if (!selectedVideo) {
-      return '';
+      return ''
     }
-    
-    const videoId = selectedVideo.metadata!.binaryDataId.split('/').pop();
-    const fileName = selectedVideo.metadata!.fileName;
-    const baseUrl = `${window.location.origin}${window.location.pathname}`;
-    
-    return `${baseUrl}#/videos/${videoId}?name=${encodeURIComponent(fileName)}`;
-  }, [selectedVideo]);
+
+    const videoId = selectedVideo.metadata!.binaryDataId.split('/').pop()
+    const fileName = selectedVideo.metadata!.fileName
+    const baseUrl = `${window.location.origin}${window.location.pathname}`
+
+    return `${baseUrl}#/videos/${videoId}?name=${encodeURIComponent(fileName)}`
+  }, [selectedVideo])
 
   const closeVideoModal = () => {
-    setModalVideoUrl(null);
-    onClose();
-  };
+    setModalVideoUrl(null)
+    onClose()
+  }
 
   // Handle escape key to close modal
   useEffect(() => {
     const handleEscapeKey = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
-        closeVideoModal();
+        closeVideoModal()
       }
-    };
+    }
 
     if (selectedVideo) {
-      document.addEventListener('keydown', handleEscapeKey);
+      document.addEventListener('keydown', handleEscapeKey)
     }
 
     return () => {
-      document.removeEventListener('keydown', handleEscapeKey);
-    };
-  }, [selectedVideo]);
+      document.removeEventListener('keydown', handleEscapeKey)
+    }
+  }, [selectedVideo])
 
   // Fetch video when selectedVideo changes
   useEffect(() => {
     if (selectedVideo) {
       const fetchVideoURL = async () => {
-        setLoadingModalVideo(true);
+        setLoadingModalVideo(true)
         try {
-          console.log("creating signed URL for video", selectedVideo.metadata!.binaryDataId);
-          const url = await viamClient.dataClient.createBinaryDataSignedURL(selectedVideo.metadata!.binaryDataId, 60);
-          setModalVideoUrl(url);
+          console.log(
+            'creating signed URL for video',
+            selectedVideo.metadata!.binaryDataId
+          )
+          const url = await viamClient.dataClient.createBinaryDataSignedURL(
+            selectedVideo.metadata!.binaryDataId,
+            60
+          )
+          setModalVideoUrl(url)
         } catch (error) {
-          console.error("Error creating signed URL for video:", error);
+          console.error('Error creating signed URL for video:', error)
         } finally {
-          setLoadingModalVideo(false);
+          setLoadingModalVideo(false)
         }
-      };
+      }
 
-      fetchVideoURL();
+      fetchVideoURL()
     }
-  }, [selectedVideo, viamClient]);
+  }, [selectedVideo, viamClient])
 
   if (!selectedVideo) {
-    return null;
+    return null
   }
 
   return (
     <div className="video-modal-overlay" onClick={closeVideoModal}>
       <div className="video-modal" onClick={(e) => e.stopPropagation()}>
         <div className="video-modal-header">
-          <button className="video-modal-close" onClick={closeVideoModal}>×</button>
+          <button className="video-modal-close" onClick={closeVideoModal}>
+            ×
+          </button>
         </div>
 
         <div className="video-modal-content">
@@ -95,17 +100,17 @@ const VideoModal: React.FC<VideoModalProps> = ({
             ) : modalVideoUrl ? (
               <video
                 ref={videoRef}
-                controls 
+                controls
                 autoPlay
                 src={modalVideoUrl}
-                style={{ 
-                  width: '100%', 
+                style={{
+                  width: '100%',
                   height: '100%',
-                  borderRadius: '8px'
+                  borderRadius: '8px',
                 }}
                 onError={(e) => {
-                  console.error("Video playback error:", e);
-                  alert("Error playing video");
+                  console.error('Video playback error:', e)
+                  alert('Error playing video')
                 }}
               />
             ) : (
@@ -117,10 +122,7 @@ const VideoModal: React.FC<VideoModalProps> = ({
           </div>
 
           <div className="video-modal-info">
-            <VideoShareButtons
-              baseUrl={videoPageURL}
-              videoRef={videoRef}
-            >
+            <VideoShareButtons baseUrl={videoPageURL} videoRef={videoRef}>
               <a
                 href={videoPageURL}
                 style={{ color: '#3b82f6' }}
@@ -137,17 +139,20 @@ const VideoModal: React.FC<VideoModalProps> = ({
               {selectedVideo.metadata?.uri ? (
                 <a
                   href={selectedVideo.metadata.uri}
-                  download={selectedVideo.metadata?.fileName?.split('/').pop() || 'video.mp4'}
+                  download={
+                    selectedVideo.metadata?.fileName?.split('/').pop() ||
+                    'video.mp4'
+                  }
                   style={{
                     color: '#3b82f6',
                     textDecoration: 'underline',
-                    cursor: 'pointer'
+                    cursor: 'pointer',
                   }}
                   onMouseEnter={(e) => {
-                    e.currentTarget.style.color = '#2563eb';
+                    e.currentTarget.style.color = '#2563eb'
                   }}
                   onMouseLeave={(e) => {
-                    e.currentTarget.style.color = '#3b82f6';
+                    e.currentTarget.style.color = '#3b82f6'
                   }}
                 >
                   {selectedVideo.metadata?.fileName || 'Unknown'}
@@ -160,7 +165,7 @@ const VideoModal: React.FC<VideoModalProps> = ({
         </div>
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default VideoModal;
+export default VideoModal

@@ -1,44 +1,54 @@
-import React, { useState, useMemo, useEffect, useRef } from 'react';
-import * as VIAM from "@viamrobotics/sdk";
+import React, { useState, useMemo, useEffect, useRef } from 'react'
+import * as VIAM from '@viamrobotics/sdk'
 
-import { useViamClients } from './lib/contexts/ViamClientContext';
-import './AppInterface.css';
-import StepVideosGrid from './components/StepVideosGrid';
-import VideoStoreSelector from './components/VideoStoreSelector';
-import ImageDisplay from './components/ImageDisplay';
-import BeforeAfterModal from './components/BeforeAfterModal';
-import GlobalLoadingIndicator from './components/GlobalLoadingIndicator';
+import { useViamClients } from './lib/contexts/ViamClientContext'
+import './AppInterface.css'
+import StepVideosGrid from './components/StepVideosGrid'
+import VideoStoreSelector from './components/VideoStoreSelector'
+import ImageDisplay from './components/ImageDisplay'
+import BeforeAfterModal from './components/BeforeAfterModal'
+import GlobalLoadingIndicator from './components/GlobalLoadingIndicator'
 import {
   formatDurationToMinutesSeconds,
   formatTimeDifference,
-} from './lib/videoUtils';
-import { getBeforeAfterImages, getStepVideos } from './lib/passUtils';
-import { getPassMetadataManager } from './lib/passMetadataManager';
+} from './lib/videoUtils'
+import { getBeforeAfterImages, getStepVideos } from './lib/passUtils'
+import { getPassMetadataManager } from './lib/passMetadataManager'
 import {
   getRobotConfigAtTime,
   downloadRobotConfig,
   getPassConfigComparison,
-} from './lib/configUtils';
-import { Pass, PassNote, PassDiagnosis, Step, RobotConfigMetadata, SYMPTOM_OPTIONS, CAUSE_OPTIONS } from './lib/types';
-import RenderIf from './components/RenderIf';
-import { BinaryDataManager } from './lib/BinaryDataManager';
-import { BinaryDataFile } from './lib/BinaryDataFile';
-import { SNAPSHOT_FILE_NAME_PREFIX } from './lib/constants';
-import { DaySummaryHeader, DayAggregateData } from './components/HistoryTable/DaySummaryHeader';
-import { StepsVizSnapshotCard } from './components/HistoryTable/StepsVizSnapshotCard';
-
+} from './lib/configUtils'
+import {
+  Pass,
+  PassNote,
+  PassDiagnosis,
+  Step,
+  RobotConfigMetadata,
+  SYMPTOM_OPTIONS,
+  CAUSE_OPTIONS,
+} from './lib/types'
+import RenderIf from './components/RenderIf'
+import { BinaryDataManager } from './lib/BinaryDataManager'
+import { BinaryDataFile } from './lib/BinaryDataFile'
+import { SNAPSHOT_FILE_NAME_PREFIX } from './lib/constants'
+import {
+  DaySummaryHeader,
+  DayAggregateData,
+} from './components/HistoryTable/DaySummaryHeader'
+import { StepsVizSnapshotCard } from './components/HistoryTable/StepsVizSnapshotCard'
 
 interface PassFilesProps {
-  pass: Pass;
-  binaryDataManager: BinaryDataManager;
-  viamClient: VIAM.ViamClient;
-  fetchTimestamp: Date | null;
-  expandedFiles: Set<string>;
-  toggleFilesExpansion: (passId: string) => void;
-  fileSearchInputs: Record<string, string>;
-  handleFileSearchChange: (passId: string, value: string) => void;
-  debouncedFileSearchInputs: Record<string, string>;
-  partId: string;
+  pass: Pass
+  binaryDataManager: BinaryDataManager
+  viamClient: VIAM.ViamClient
+  fetchTimestamp: Date | null
+  expandedFiles: Set<string>
+  toggleFilesExpansion: (passId: string) => void
+  fileSearchInputs: Record<string, string>
+  handleFileSearchChange: (passId: string, value: string) => void
+  debouncedFileSearchInputs: Record<string, string>
+  partId: string
 }
 
 const PassFiles: React.FC<PassFilesProps> = ({
@@ -52,75 +62,84 @@ const PassFiles: React.FC<PassFilesProps> = ({
   debouncedFileSearchInputs,
   partId,
 }) => {
-  const { machineId, organizationId, viamClient } = useViamClients();
+  const { machineId, organizationId, viamClient } = useViamClients()
 
-  const passId = pass.pass_id;
+  const passId = pass.pass_id
 
   const handleDownload = async (file: VIAM.dataApi.BinaryData) => {
     try {
-      const data = await viamClient.dataClient.binaryDataByIds([file.metadata!.binaryDataId]);
+      const data = await viamClient.dataClient.binaryDataByIds([
+        file.metadata!.binaryDataId,
+      ])
       if (data.length > 0) {
-        const blob = new Blob([new Uint8Array(data[0].binary)]);
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = file.metadata?.fileName?.split('/').pop() || 'download';
-        document.body.appendChild(a);
-        a.click();
-        window.URL.revokeObjectURL(url);
-        document.body.removeChild(a);
+        const blob = new Blob([new Uint8Array(data[0].binary)])
+        const url = window.URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = file.metadata?.fileName?.split('/').pop() || 'download'
+        document.body.appendChild(a)
+        a.click()
+        window.URL.revokeObjectURL(url)
+        document.body.removeChild(a)
       }
     } catch (error) {
-      console.error('Error downloading file:', error);
-      alert('Failed to download file');
+      console.error('Error downloading file:', error)
+      alert('Failed to download file')
     }
-  };
+  }
 
   const passFiles = useMemo(() => {
-    const passStart = new Date(pass.start);
-    const passEnd = new Date(pass.end);
+    const passStart = new Date(pass.start)
+    const passEnd = new Date(pass.end)
 
-    return binaryDataManager.getPassFiles(passId, passStart, passEnd);
-  }, [pass, binaryDataManager]);
+    return binaryDataManager.getPassFiles(passId, passStart, passEnd)
+  }, [pass, binaryDataManager])
 
   const filteredPassFiles = useMemo(() => {
-    const searchTerm = (debouncedFileSearchInputs[passId] || '').toLowerCase();
-    if (!searchTerm) return passFiles;
+    const searchTerm = (debouncedFileSearchInputs[passId] || '').toLowerCase()
+    if (!searchTerm) return passFiles
 
-    return passFiles.filter(file => {
-      const fileName = file.fileName.split('/').pop()?.toLowerCase() || '';
-      const fullPath = file.fileName.toLowerCase() || '';
-      return fileName.includes(searchTerm) || fullPath.includes(searchTerm);
-    });
-  }, [passFiles, debouncedFileSearchInputs, passId]);
+    return passFiles.filter((file) => {
+      const fileName = file.fileName.split('/').pop()?.toLowerCase() || ''
+      const fullPath = file.fileName.toLowerCase() || ''
+      return fileName.includes(searchTerm) || fullPath.includes(searchTerm)
+    })
+  }, [passFiles, debouncedFileSearchInputs, passId])
 
   const filesCountDisplay = useMemo(() => {
-    const searchTerm = (debouncedFileSearchInputs[passId] || '').toLowerCase();
+    const searchTerm = (debouncedFileSearchInputs[passId] || '').toLowerCase()
     if (searchTerm) {
-      return `(showing ${filteredPassFiles.length} of ${passFiles.length})`;
+      return `(showing ${filteredPassFiles.length} of ${passFiles.length})`
     }
-    return `(${passFiles.length})`;
-  }, [passFiles.length, filteredPassFiles.length, debouncedFileSearchInputs, passId]);
+    return `(${passFiles.length})`
+  }, [
+    passFiles.length,
+    filteredPassFiles.length,
+    debouncedFileSearchInputs,
+    passId,
+  ])
 
-  const isLoading = fetchTimestamp && fetchTimestamp > pass.start;
+  const isLoading = fetchTimestamp && fetchTimestamp > pass.start
 
   if (isLoading && passFiles.length === 0) {
     return (
       <div className="pass-files-section" style={{}}>
-        <span style={{
-          display: 'inline-block',
-          width: '28px',
-          height: '28px',
-          border: '3px solid rgba(59, 130, 246, 0.2)',
-          borderTopColor: '#3b82f6',
-          borderRadius: '50%',
-          animation: 'spin 1s linear infinite'
-        }}></span>
+        <span
+          style={{
+            display: 'inline-block',
+            width: '28px',
+            height: '28px',
+            border: '3px solid rgba(59, 130, 246, 0.2)',
+            borderTopColor: '#3b82f6',
+            borderRadius: '50%',
+            animation: 'spin 1s linear infinite',
+          }}
+        ></span>
         <p style={{ marginTop: '12px', color: '#6b7280', fontSize: '14px' }}>
           Loading files...
         </p>
       </div>
-    );
+    )
   }
 
   return (
@@ -133,15 +152,19 @@ const PassFiles: React.FC<PassFilesProps> = ({
           alignItems: 'center',
           gap: '6px',
           userSelect: 'none',
-          paddingLeft: '2px'
+          paddingLeft: '2px',
         }}
       >
-        <span style={{
-          display: 'inline-block',
-          transition: 'transform 0.2s',
-          transform: expandedFiles.has(passId) ? 'rotate(90deg)' : 'rotate(0deg)',
-          fontSize: '10px'
-        }}>
+        <span
+          style={{
+            display: 'inline-block',
+            transition: 'transform 0.2s',
+            transform: expandedFiles.has(passId)
+              ? 'rotate(90deg)'
+              : 'rotate(0deg)',
+            fontSize: '10px',
+          }}
+        >
           ▶
         </span>
         Files captured during this pass {filesCountDisplay}
@@ -149,7 +172,13 @@ const PassFiles: React.FC<PassFilesProps> = ({
 
       {expandedFiles.has(passId) && passFiles.length > 0 && (
         <>
-          <div style={{ marginTop: '8px', marginLeft: '12px', marginBottom: '8px' }}>
+          <div
+            style={{
+              marginTop: '8px',
+              marginLeft: '12px',
+              marginBottom: '8px',
+            }}
+          >
             <input
               type="text"
               placeholder="Search files by filename..."
@@ -165,124 +194,140 @@ const PassFiles: React.FC<PassFilesProps> = ({
                 border: '1px solid #e5e7eb',
                 borderRadius: '4px',
                 boxSizing: 'border-box',
-                backgroundColor: '#ffffff'
+                backgroundColor: '#ffffff',
               }}
             />
           </div>
-          <div style={{
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '0',
-            overflowY: 'auto',
-            maxHeight: '33dvh',
-            overflow: 'auto',
-            borderTop: '1px solid #e5e7eb',
-            margin: '0 0 0 0.5rem'
-          }}>
-            {filteredPassFiles
-              .map((file, fileIndex, filteredFiles) => {
+          <div
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '0',
+              overflowY: 'auto',
+              maxHeight: '33dvh',
+              overflow: 'auto',
+              borderTop: '1px solid #e5e7eb',
+              margin: '0 0 0 0.5rem',
+            }}
+          >
+            {filteredPassFiles.map((file, fileIndex, filteredFiles) => {
+              const fileName = file.fileName.split('/').pop() || 'Unknown file'
 
-                const fileName = file.fileName.split('/').pop() || 'Unknown file';
-
-                return (
+              return (
+                <div
+                  key={fileIndex}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    padding: '4px 6px',
+                    backgroundColor: '#f9fafb',
+                    borderBottom:
+                      fileIndex < filteredFiles.length - 1
+                        ? '1px solid #e5e7eb'
+                        : 'none',
+                    fontSize: '13px',
+                    minWidth: '280px',
+                    boxSizing: 'border-box',
+                    transition: 'background-color 0.2s',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = '#f3f4f6'
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = '#f9fafb'
+                  }}
+                >
                   <div
-                    key={fileIndex}
                     style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      padding: '4px 6px',
-                      backgroundColor: '#f9fafb',
-                      borderBottom: fileIndex < filteredFiles.length - 1 ? '1px solid #e5e7eb' : 'none',
-                      fontSize: '13px',
-                      minWidth: '280px',
-                      boxSizing: 'border-box',
-                      transition: 'background-color 0.2s'
-                    }}
-                    onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#f3f4f6'; }}
-                    onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = '#f9fafb'; }}
-                  >
-                    <div style={{
                       display: 'flex',
                       alignItems: 'center',
                       gap: '8px',
                       flex: 1,
                       minWidth: 0,
-                      overflow: 'hidden'
-                    }}>
-                      <span style={{
+                      overflow: 'hidden',
+                    }}
+                  >
+                    <span
+                      style={{
                         color: '#374151',
                         textOverflow: 'ellipsis',
                         overflow: 'hidden',
                         whiteSpace: 'nowrap',
-                        flex: 1
-                      }} title={file.fileName || fileName}>
-                        {fileName}
-                      </span>
-                      <span style={{
+                        flex: 1,
+                      }}
+                      title={file.fileName || fileName}
+                    >
+                      {fileName}
+                    </span>
+                    <span
+                      style={{
                         color: '#9ca3af',
                         fontSize: '12px',
                         whiteSpace: 'nowrap',
-                        flexShrink: 0
-                      }}>
-                        {file.timeRequested?.toLocaleTimeString() || ''}
-                      </span>
-                    </div>
-                    <a
-                      href="#"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        handleDownload(file.binaryData);
-                      }}
-                      style={{
-                        marginLeft: '12px',
-                        padding: '6px 8px',
-                        backgroundColor: '#3b82f6',
-                        color: 'white',
-                        borderRadius: '4px',
-                        textDecoration: 'none',
-                        fontSize: '12px',
-                        whiteSpace: 'nowrap',
                         flexShrink: 0,
-                        cursor: 'pointer',
-                        display: 'inline-block',
-                        border: 'none'
                       }}
                     >
-                      Download
-                    </a>
-                    <a
-                      href={
-                        `https://storage.cloud.google.com/viam-data-${organizationId}/` +
-                        `${organizationId}/${machineId}/${partId}/files/` +
-                        `${file.binaryDataId.split("/").pop()}` +
-                        `${file.fileName}.gz`
-                      }
-                      rel="noreferrer"
-                      target="_blank"
-                      style={{
-                        marginLeft: '12px',
-                        padding: '6px 8px',
-                        backgroundColor: '#1d4ed8',
-                        color: 'white',
-                        borderRadius: '4px',
-                        fontSize: '12px',
-                        border: 'none',
-                        textDecoration: 'none'
-                      }}
-                    >
-                      Download from GCS
-                    </a>
+                      {file.timeRequested?.toLocaleTimeString() || ''}
+                    </span>
                   </div>
-                );
-              })}
+                  <a
+                    href="#"
+                    onClick={(e) => {
+                      e.preventDefault()
+                      e.stopPropagation()
+                      handleDownload(file.binaryData)
+                    }}
+                    style={{
+                      marginLeft: '12px',
+                      padding: '6px 8px',
+                      backgroundColor: '#3b82f6',
+                      color: 'white',
+                      borderRadius: '4px',
+                      textDecoration: 'none',
+                      fontSize: '12px',
+                      whiteSpace: 'nowrap',
+                      flexShrink: 0,
+                      cursor: 'pointer',
+                      display: 'inline-block',
+                      border: 'none',
+                    }}
+                  >
+                    Download
+                  </a>
+                  <a
+                    href={
+                      `https://storage.cloud.google.com/viam-data-${organizationId}/` +
+                      `${organizationId}/${machineId}/${partId}/files/` +
+                      `${file.binaryDataId.split('/').pop()}` +
+                      `${file.fileName}.gz`
+                    }
+                    rel="noreferrer"
+                    target="_blank"
+                    style={{
+                      marginLeft: '12px',
+                      padding: '6px 8px',
+                      backgroundColor: '#1d4ed8',
+                      color: 'white',
+                      borderRadius: '4px',
+                      fontSize: '12px',
+                      border: 'none',
+                      textDecoration: 'none',
+                    }}
+                  >
+                    Download from GCS
+                  </a>
+                </div>
+              )
+            })}
             {filteredPassFiles.length === 0 && fileSearchInputs[passId] && (
-              <div style={{
-                padding: '12px',
-                color: '#6b7280',
-                fontSize: '13px'
-              }}>
+              <div
+                style={{
+                  padding: '12px',
+                  color: '#6b7280',
+                  fontSize: '13px',
+                }}
+              >
                 No files match &quot;{fileSearchInputs[passId]}&quot;
               </div>
             )}
@@ -291,39 +336,48 @@ const PassFiles: React.FC<PassFilesProps> = ({
       )}
 
       {passFiles.length === 0 && !isLoading && (
-        <p style={{ fontSize: '13px', color: '#6b7280', marginTop: '8px', paddingLeft: '30px' }}>
+        <p
+          style={{
+            fontSize: '13px',
+            color: '#6b7280',
+            marginTop: '8px',
+            paddingLeft: '30px',
+          }}
+        >
           No files found for this pass.
         </p>
       )}
     </div>
-  );
-};
+  )
+}
 
 interface AppViewProps {
-  passSummaries?: any[];
-  files: Map<string, VIAM.dataApi.BinaryData>;
-  videoFiles: Map<string, VIAM.dataApi.BinaryData>;
-  imageFiles: Map<string, VIAM.dataApi.BinaryData>;
-  fetchVideos: (start: Date) => Promise<void>;
-  machineName: string | null;
-  fetchTimestamp: Date | null;
-  machineId: string;
-  partId: string;
-  passNotes: Map<string, PassNote[]>;
-  onNotesUpdate: React.Dispatch<React.SetStateAction<Map<string, PassNote[]>>>;
-  passDiagnoses: Map<string, PassDiagnosis>;
-  onDiagnosesUpdate: React.Dispatch<React.SetStateAction<Map<string, PassDiagnosis>>>;
-  fetchingNotes: boolean;
+  passSummaries?: any[]
+  files: Map<string, VIAM.dataApi.BinaryData>
+  videoFiles: Map<string, VIAM.dataApi.BinaryData>
+  imageFiles: Map<string, VIAM.dataApi.BinaryData>
+  fetchVideos: (start: Date) => Promise<void>
+  machineName: string | null
+  fetchTimestamp: Date | null
+  machineId: string
+  partId: string
+  passNotes: Map<string, PassNote[]>
+  onNotesUpdate: React.Dispatch<React.SetStateAction<Map<string, PassNote[]>>>
+  passDiagnoses: Map<string, PassDiagnosis>
+  onDiagnosesUpdate: React.Dispatch<
+    React.SetStateAction<Map<string, PassDiagnosis>>
+  >
+  fetchingNotes: boolean
   pagination?: {
-    currentPage: number;
-    totalPages: number;
-    itemsPerPage: number;
-    totalItems: number;
-    onPageChange: (page: number) => void;
-    daysPerPage?: boolean;
-    currentDaysDisplayed?: number;
-    totalEntries?: number;
-  };
+    currentPage: number
+    totalPages: number
+    itemsPerPage: number
+    totalItems: number
+    onPageChange: (page: number) => void
+    daysPerPage?: boolean
+    currentDaysDisplayed?: number
+    totalEntries?: number
+  }
 }
 
 const AppInterface: React.FC<AppViewProps> = ({
@@ -343,171 +397,198 @@ const AppInterface: React.FC<AppViewProps> = ({
   fetchingNotes,
   pagination,
 }) => {
-  const { robotClient, viamClient, organizationId } = useViamClients();
+  const { robotClient, viamClient, organizationId } = useViamClients()
 
-  const [activeRoute, setActiveRoute] = useState('live');
-  const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
-  const [videoStoreClient, setVideoStoreClient] = useState<VIAM.GenericComponentClient | null>(null);
+  const [activeRoute, setActiveRoute] = useState('live')
+  const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set())
+  const [videoStoreClient, setVideoStoreClient] =
+    useState<VIAM.GenericComponentClient | null>(null)
   const [selectedCamera, setSelectedCamera] = useState<string>(() => {
     // Initialize from localStorage if available
-    return localStorage.getItem('selectedCamera') || '';
-  });
+    return localStorage.getItem('selectedCamera') || ''
+  })
   const [beforeAfterModal, setBeforeAfterModal] = useState<{
-    beforeImage: VIAM.dataApi.BinaryData | null;
-    afterImage: VIAM.dataApi.BinaryData | null;
-  } | null>(null);
-  const [noteInputs, setNoteInputs] = useState<Record<string, string>>({});
-  const [downloadingConfigs, setDownloadingConfigs] = useState<Set<string>>(new Set());
-  const [configMetadata, setConfigMetadata] = useState<Map<string, RobotConfigMetadata>>(new Map());
-  const [loadingConfigMetadata, setLoadingConfigMetadata] = useState<Set<string>>(new Set());
-  const [expandedFiles, setExpandedFiles] = useState<Set<string>>(new Set());
-  const [fileSearchInputs, setFileSearchInputs] = useState<Record<string, string>>({});
-  const [debouncedFileSearchInputs, setDebouncedFileSearchInputs] = useState<Record<string, string>>({});
-  const [expandedErrors, setExpandedErrors] = useState<Set<string>>(new Set());
+    beforeImage: VIAM.dataApi.BinaryData | null
+    afterImage: VIAM.dataApi.BinaryData | null
+  } | null>(null)
+  const [noteInputs, setNoteInputs] = useState<Record<string, string>>({})
+  const [downloadingConfigs, setDownloadingConfigs] = useState<Set<string>>(
+    new Set()
+  )
+  const [configMetadata, setConfigMetadata] = useState<
+    Map<string, RobotConfigMetadata>
+  >(new Map())
+  const [loadingConfigMetadata, setLoadingConfigMetadata] = useState<
+    Set<string>
+  >(new Set())
+  const [expandedFiles, setExpandedFiles] = useState<Set<string>>(new Set())
+  const [fileSearchInputs, setFileSearchInputs] = useState<
+    Record<string, string>
+  >({})
+  const [debouncedFileSearchInputs, setDebouncedFileSearchInputs] = useState<
+    Record<string, string>
+  >({})
+  const [expandedErrors, setExpandedErrors] = useState<Set<string>>(new Set())
 
   // Diagnosis UI state
-  const [diagnosisInputs, setDiagnosisInputs] = useState<Record<string, { symptom?: string; cause?: string; jiraTicketUrl?: string }>>({});
-  const [jiraValidationErrors, setJiraValidationErrors] = useState<Record<string, string>>({});
+  const [diagnosisInputs, setDiagnosisInputs] = useState<
+    Record<string, { symptom?: string; cause?: string; jiraTicketUrl?: string }>
+  >({})
+  const [jiraValidationErrors, setJiraValidationErrors] = useState<
+    Record<string, string>
+  >({})
   // Combined saving state for notes + diagnosis
-  const [savingMetadata, setSavingMetadata] = useState<Set<string>>(new Set());
-  const [metadataSuccess, setMetadataSuccess] = useState<Set<string>>(new Set());
-  const binaryDataManger = useRef<BinaryDataManager>(new BinaryDataManager());
-
+  const [savingMetadata, setSavingMetadata] = useState<Set<string>>(new Set())
+  const [metadataSuccess, setMetadataSuccess] = useState<Set<string>>(new Set())
+  const binaryDataManger = useRef<BinaryDataManager>(new BinaryDataManager())
 
   useEffect(() => {
-    binaryDataManger.current = new BinaryDataManager();
+    binaryDataManger.current = new BinaryDataManager()
     Array.from(files.values()).forEach((file) => {
-      binaryDataManger.current?.addBinaryDataFile(new BinaryDataFile(file));
-    });
-  }, [files]);
+      binaryDataManger.current?.addBinaryDataFile(new BinaryDataFile(file))
+    })
+  }, [files])
 
   // Debounce file search inputs
   useEffect(() => {
     const handler = setTimeout(() => {
-      setDebouncedFileSearchInputs(fileSearchInputs);
-    }, 300); // 300ms delay
+      setDebouncedFileSearchInputs(fileSearchInputs)
+    }, 300) // 300ms delay
 
     return () => {
-      clearTimeout(handler);
-    };
-  }, [fileSearchInputs]);
+      clearTimeout(handler)
+    }
+  }, [fileSearchInputs])
 
   // Initialize note inputs from existing notes
   useEffect(() => {
-    const initialInputs: Record<string, string> = {};
+    const initialInputs: Record<string, string> = {}
     passNotes.forEach((notes, passId) => {
       if (notes.length > 0) {
-        initialInputs[passId] = notes[0].note_text;
+        initialInputs[passId] = notes[0].note_text
       }
-    });
-    setNoteInputs(initialInputs);
-  }, [passNotes]);
+    })
+    setNoteInputs(initialInputs)
+  }, [passNotes])
 
   // Initialize diagnosis inputs from existing diagnoses
   useEffect(() => {
-    const initialDiagnoses: Record<string, { symptom?: string; cause?: string; jiraTicketUrl?: string }> = {};
+    const initialDiagnoses: Record<
+      string,
+      { symptom?: string; cause?: string; jiraTicketUrl?: string }
+    > = {}
     passDiagnoses.forEach((diagnosis, passId) => {
       initialDiagnoses[passId] = {
         symptom: diagnosis.symptom,
         cause: diagnosis.cause,
-        jiraTicketUrl: diagnosis.jira_ticket_url
-      };
-    });
-    setDiagnosisInputs(initialDiagnoses);
-  }, [passDiagnoses]);
+        jiraTicketUrl: diagnosis.jira_ticket_url,
+      }
+    })
+    setDiagnosisInputs(initialDiagnoses)
+  }, [passDiagnoses])
 
   const handleNoteChange = (passId: string, value: string) => {
-    setNoteInputs(prev => ({
+    setNoteInputs((prev) => ({
       ...prev,
-      [passId]: value
-    }));
+      [passId]: value,
+    }))
 
     // Clear success state when editing
     if (metadataSuccess.has(passId)) {
-      const newSuccess = new Set(metadataSuccess);
-      newSuccess.delete(passId);
-      setMetadataSuccess(newSuccess);
+      const newSuccess = new Set(metadataSuccess)
+      newSuccess.delete(passId)
+      setMetadataSuccess(newSuccess)
     }
-  };
+  }
 
-  const handleDiagnosisChange = (passId: string, field: 'symptom' | 'cause' | 'jiraTicketUrl', value: string) => {
-    setDiagnosisInputs(prev => ({
+  const handleDiagnosisChange = (
+    passId: string,
+    field: 'symptom' | 'cause' | 'jiraTicketUrl',
+    value: string
+  ) => {
+    setDiagnosisInputs((prev) => ({
       ...prev,
       [passId]: {
         ...prev[passId],
-        [field]: value || undefined
-      }
-    }));
+        [field]: value || undefined,
+      },
+    }))
 
     // Validate JIRA URL format
     if (field === 'jiraTicketUrl') {
-      const trimmedValue = value.trim();
+      const trimmedValue = value.trim()
       if (trimmedValue === '') {
         // Empty is valid (field is optional)
-        setJiraValidationErrors(prev => {
-          const newErrors = { ...prev };
-          delete newErrors[passId];
-          return newErrors;
-        });
+        setJiraValidationErrors((prev) => {
+          const newErrors = { ...prev }
+          delete newErrors[passId]
+          return newErrors
+        })
       } else {
         // Validate URL format
         try {
-          const url = new URL(trimmedValue);
+          const url = new URL(trimmedValue)
           // Check if it's a Viam JIRA URL
           if (url.hostname !== 'viam.atlassian.net') {
-            setJiraValidationErrors(prev => ({
+            setJiraValidationErrors((prev) => ({
               ...prev,
-              [passId]: 'JIRA URL must be from viam.atlassian.net'
-            }));
+              [passId]: 'JIRA URL must be from viam.atlassian.net',
+            }))
           } else if (!url.pathname.startsWith('/browse/')) {
-            setJiraValidationErrors(prev => ({
+            setJiraValidationErrors((prev) => ({
               ...prev,
-              [passId]: 'JIRA URL must follow format: https://viam.atlassian.net/browse/PROJECT-123'
-            }));
+              [passId]:
+                'JIRA URL must follow format: https://viam.atlassian.net/browse/PROJECT-123',
+            }))
           } else {
             // Valid JIRA URL
-            setJiraValidationErrors(prev => {
-              const newErrors = { ...prev };
-              delete newErrors[passId];
-              return newErrors;
-            });
+            setJiraValidationErrors((prev) => {
+              const newErrors = { ...prev }
+              delete newErrors[passId]
+              return newErrors
+            })
           }
         } catch {
-          setJiraValidationErrors(prev => ({
+          setJiraValidationErrors((prev) => ({
             ...prev,
-            [passId]: 'Please enter a valid URL'
-          }));
+            [passId]: 'Please enter a valid URL',
+          }))
         }
       }
     }
 
     // Clear success state when editing
     if (metadataSuccess.has(passId)) {
-      const newSuccess = new Set(metadataSuccess);
-      newSuccess.delete(passId);
-      setMetadataSuccess(newSuccess);
+      const newSuccess = new Set(metadataSuccess)
+      newSuccess.delete(passId)
+      setMetadataSuccess(newSuccess)
     }
-  };
+  }
 
   const savePassMetadata = async (passId: string, isFailedPass: boolean) => {
-    if (!passId || !partId) return;
+    if (!passId || !partId) return
 
-    const noteText = noteInputs[passId]?.trim() || '';
-    const diagnosisData = diagnosisInputs[passId] || {};
-    const { symptom, cause, jiraTicketUrl } = diagnosisData;
+    const noteText = noteInputs[passId]?.trim() || ''
+    const diagnosisData = diagnosisInputs[passId] || {}
+    const { symptom, cause, jiraTicketUrl } = diagnosisData
 
     // Show saving indicator
-    setSavingMetadata(prev => new Set(prev).add(passId));
+    setSavingMetadata((prev) => new Set(prev).add(passId))
 
     try {
-      const metadataManager = getPassMetadataManager(viamClient, machineId);
-      
+      const metadataManager = getPassMetadataManager(viamClient, machineId)
+
       // Save note
-      await metadataManager.savePassNote(passId, noteText);
-      
+      await metadataManager.savePassNote(passId, noteText)
+
       // Save diagnosis only for failed passes
       if (isFailedPass) {
-        await metadataManager.savePassDiagnosis(passId, symptom, cause, jiraTicketUrl);
+        await metadataManager.savePassDiagnosis(
+          passId,
+          symptom,
+          cause,
+          jiraTicketUrl
+        )
       }
 
       // Update notes in state
@@ -515,18 +596,18 @@ const AppInterface: React.FC<AppViewProps> = ({
         pass_id: passId,
         note_text: noteText,
         created_at: new Date().toISOString(),
-        created_by: "summary-web-app"
-      };
-      onNotesUpdate(prevNotes => {
-        const newNotesMap = new Map(prevNotes);
-        newNotesMap.set(passId, [newNote]);
-        return newNotesMap;
-      });
+        created_by: 'summary-web-app',
+      }
+      onNotesUpdate((prevNotes) => {
+        const newNotesMap = new Map(prevNotes)
+        newNotesMap.set(passId, [newNote])
+        return newNotesMap
+      })
 
       // Update diagnoses in state (only for failed passes)
       if (isFailedPass) {
-        onDiagnosesUpdate(prevDiagnoses => {
-          const newDiagnosesMap = new Map(prevDiagnoses);
+        onDiagnosesUpdate((prevDiagnoses) => {
+          const newDiagnosesMap = new Map(prevDiagnoses)
           if (symptom || cause || jiraTicketUrl) {
             newDiagnosesMap.set(passId, {
               pass_id: passId,
@@ -534,266 +615,296 @@ const AppInterface: React.FC<AppViewProps> = ({
               cause: cause as PassDiagnosis['cause'],
               jira_ticket_url: jiraTicketUrl,
               updated_at: new Date().toISOString(),
-              updated_by: "summary-web-app"
-            });
+              updated_by: 'summary-web-app',
+            })
           } else {
-            newDiagnosesMap.delete(passId);
+            newDiagnosesMap.delete(passId)
           }
-          return newDiagnosesMap;
-        });
+          return newDiagnosesMap
+        })
       }
 
       // Show success state
-      setMetadataSuccess(prev => new Set(prev).add(passId));
+      setMetadataSuccess((prev) => new Set(prev).add(passId))
 
       // Clear success state after a delay
       setTimeout(() => {
-        setMetadataSuccess(prev => {
-          const newSuccess = new Set(prev);
-          newSuccess.delete(passId);
-          return newSuccess;
-        });
-      }, 2000);
+        setMetadataSuccess((prev) => {
+          const newSuccess = new Set(prev)
+          newSuccess.delete(passId)
+          return newSuccess
+        })
+      }, 2000)
     } catch (error) {
-      console.error("Failed to save pass metadata:", error);
+      console.error('Failed to save pass metadata:', error)
     } finally {
-      setSavingMetadata(prev => {
-        const newSaving = new Set(prev);
-        newSaving.delete(passId);
-        return newSaving;
-      });
+      setSavingMetadata((prev) => {
+        const newSaving = new Set(prev)
+        newSaving.delete(passId)
+        return newSaving
+      })
     }
-  };
+  }
 
   const cameraComponentNames = Array.from(
     new Set(
       Array.from(imageFiles.values())
-        .filter(file => file.metadata?.captureMetadata?.componentType === 'rdk:component:camera')
-        .map(file => file.metadata?.captureMetadata?.componentName)
+        .filter(
+          (file) =>
+            file.metadata?.captureMetadata?.componentType ===
+            'rdk:component:camera'
+        )
+        .map((file) => file.metadata?.captureMetadata?.componentName)
         .filter((name): name is string => !!name)
     )
-  );
+  )
 
   // Track if we've done the initial camera auto-selection
-  const [hasAutoSelectedCamera, setHasAutoSelectedCamera] = useState(false);
+  const [hasAutoSelectedCamera, setHasAutoSelectedCamera] = useState(false)
 
   // Auto-select camera: if only one available, select it; otherwise restore from localStorage
   // Only runs once on initial load
   useEffect(() => {
-    if (cameraComponentNames.length === 0 || hasAutoSelectedCamera) return;
-    
+    if (cameraComponentNames.length === 0 || hasAutoSelectedCamera) return
+
     // Mark that we've done the auto-selection
-    setHasAutoSelectedCamera(true);
-    
+    setHasAutoSelectedCamera(true)
+
     // If only one camera, auto-select it
     if (cameraComponentNames.length === 1) {
-      const onlyCamera = cameraComponentNames[0];
-      setSelectedCamera(onlyCamera);
-      localStorage.setItem('selectedCamera', onlyCamera);
-      return;
+      const onlyCamera = cameraComponentNames[0]
+      setSelectedCamera(onlyCamera)
+      localStorage.setItem('selectedCamera', onlyCamera)
+      return
     }
-    
-    // If multiple cameras, try to restore from localStorage
-    const savedCamera = localStorage.getItem('selectedCamera');
-    if (savedCamera && cameraComponentNames.includes(savedCamera)) {
-      setSelectedCamera(savedCamera);
-    }
-  }, [cameraComponentNames, hasAutoSelectedCamera]);
 
-  const openBeforeAfterModal = (beforeImage: VIAM.dataApi.BinaryData | null, afterImage: VIAM.dataApi.BinaryData | null) => {
-    setBeforeAfterModal({ beforeImage, afterImage });
-  };
+    // If multiple cameras, try to restore from localStorage
+    const savedCamera = localStorage.getItem('selectedCamera')
+    if (savedCamera && cameraComponentNames.includes(savedCamera)) {
+      setSelectedCamera(savedCamera)
+    }
+  }, [cameraComponentNames, hasAutoSelectedCamera])
+
+  const openBeforeAfterModal = (
+    beforeImage: VIAM.dataApi.BinaryData | null,
+    afterImage: VIAM.dataApi.BinaryData | null
+  ) => {
+    setBeforeAfterModal({ beforeImage, afterImage })
+  }
 
   const closeBeforeAfterModal = () => {
-    setBeforeAfterModal(null);
-  };
+    setBeforeAfterModal(null)
+  }
 
   // Helper function to get before/after images for a pass
-  const passImages = (pass: Pass) => getBeforeAfterImages(pass, imageFiles, selectedCamera);
+  const passImages = (pass: Pass) =>
+    getBeforeAfterImages(pass, imageFiles, selectedCamera)
 
   // Compute total execution time (ms) for a pass by summing 'executing' steps
   const getExecutionTimeMs = (pass: Pass): number => {
-    if (!pass.steps || pass.steps.length === 0) return 0;
+    if (!pass.steps || pass.steps.length === 0) return 0
     return pass.steps.reduce((sum, step) => {
       return step.name.toLowerCase() === 'executing'
         ? sum + (step.end.getTime() - step.start.getTime())
-        : sum;
-    }, 0);
-  };
+        : sum
+    }, 0)
+  }
 
-  const activeTabStyle = "bg-blue-600 text-white";
-  const inactiveTabStyle = "bg-gray-200 text-gray-700 hover:bg-gray-300";
+  const activeTabStyle = 'bg-blue-600 text-white'
+  const inactiveTabStyle = 'bg-gray-200 text-gray-700 hover:bg-gray-300'
 
   // Memoize the grouped passes calculation with consistent date formatting
   const groupedPasses = useMemo(() => {
     return passSummaries.reduce((acc: Record<string, Pass[]>, pass) => {
       // Use a consistent date key (YYYY-MM-DD)
-      const dateKey = pass.start.toISOString().split('T')[0];
+      const dateKey = pass.start.toISOString().split('T')[0]
       if (!acc[dateKey]) {
-        acc[dateKey] = [];
+        acc[dateKey] = []
       }
-      acc[dateKey].push(pass);
-      return acc;
-    }, {});
-  }, [passSummaries]);
+      acc[dateKey].push(pass)
+      return acc
+    }, {})
+  }, [passSummaries])
 
   // Memoize day aggregates calculation - calculate both execution percentage AND total time
   const dayAggregates = useMemo(() => {
-    return Object.entries(groupedPasses).reduce((acc: Record<string, DayAggregateData>, [dateKey, passes]) => {
-      let totalFactoryTime = 0;
-      let totalExecutionTime = 0;
-      let totalOtherStepsTime = 0;
-      let totalBluePoints = 0;
-      const symptomCounts = new Map<string, number>();
-      const causeCounts = new Map<string, number>();
+    return Object.entries(groupedPasses).reduce(
+      (acc: Record<string, DayAggregateData>, [dateKey, passes]) => {
+        let totalFactoryTime = 0
+        let totalExecutionTime = 0
+        let totalOtherStepsTime = 0
+        let totalBluePoints = 0
+        const symptomCounts = new Map<string, number>()
+        const causeCounts = new Map<string, number>()
 
-      // Calculate both time and execution metrics
-      passes.forEach(pass => {
-        // Add pass duration to total time
-        const passDuration = pass.end.getTime() - pass.start.getTime();
-        totalFactoryTime += passDuration;
+        // Calculate both time and execution metrics
+        passes.forEach((pass) => {
+          // Add pass duration to total time
+          const passDuration = pass.end.getTime() - pass.start.getTime()
+          totalFactoryTime += passDuration
 
-        // Calculate execution time for percentage
-        if (pass.steps && Array.isArray(pass.steps)) {
-          pass.steps.forEach(step => {
-            const stepDuration = step.end.getTime() - step.start.getTime();
+          // Calculate execution time for percentage
+          if (pass.steps && Array.isArray(pass.steps)) {
+            pass.steps.forEach((step) => {
+              const stepDuration = step.end.getTime() - step.start.getTime()
 
-            // Look for the specific "executing" step (exact match or case-insensitive)
-            if (step.name.toLowerCase() === 'executing') {
-              totalExecutionTime += stepDuration;
-            } else {
-              totalOtherStepsTime += stepDuration;
-            }
-          });
-        }
+              // Look for the specific "executing" step (exact match or case-insensitive)
+              if (step.name.toLowerCase() === 'executing') {
+                totalExecutionTime += stepDuration
+              } else {
+                totalOtherStepsTime += stepDuration
+              }
+            })
+          }
 
-        // Sum up blue points
-        if (pass.blue_point_count !== undefined) {
-          totalBluePoints += pass.blue_point_count;
-        }
+          // Sum up blue points
+          if (pass.blue_point_count !== undefined) {
+            totalBluePoints += pass.blue_point_count
+          }
 
-        // Count diagnoses for failed passes
-        if (!pass.success) {
-          const diagnosis = passDiagnoses.get(pass.pass_id);
-          if (diagnosis) {
-            if (diagnosis.symptom) {
-              symptomCounts.set(diagnosis.symptom, (symptomCounts.get(diagnosis.symptom) || 0) + 1);
-            }
-            if (diagnosis.cause) {
-              causeCounts.set(diagnosis.cause, (causeCounts.get(diagnosis.cause) || 0) + 1);
+          // Count diagnoses for failed passes
+          if (!pass.success) {
+            const diagnosis = passDiagnoses.get(pass.pass_id)
+            if (diagnosis) {
+              if (diagnosis.symptom) {
+                symptomCounts.set(
+                  diagnosis.symptom,
+                  (symptomCounts.get(diagnosis.symptom) || 0) + 1
+                )
+              }
+              if (diagnosis.cause) {
+                causeCounts.set(
+                  diagnosis.cause,
+                  (causeCounts.get(diagnosis.cause) || 0) + 1
+                )
+              }
             }
           }
+        })
+
+        const totalStepsTime = totalExecutionTime + totalOtherStepsTime
+        const executionPercentage =
+          totalStepsTime > 0 ? (totalExecutionTime / totalStepsTime) * 100 : 0
+
+        // Format the date for display using the dateKey (which is already YYYY-MM-DD)
+        const [year, month, day] = dateKey.split('-').map(Number)
+        const date = new Date(year, month - 1, day)
+        const formattedDate = date.toLocaleDateString([], {
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric',
+        })
+
+        acc[dateKey] = {
+          totalFactoryTime,
+          totalExecutionTime,
+          totalOtherStepsTime,
+          totalPassCount: passes.length,
+          executionPercentage,
+          formattedDate,
+          totalBluePoints,
+          symptomCounts,
+          causeCounts,
         }
-      });
 
-      const totalStepsTime = totalExecutionTime + totalOtherStepsTime;
-      const executionPercentage = totalStepsTime > 0 ? (totalExecutionTime / totalStepsTime) * 100 : 0;
-
-      // Format the date for display using the dateKey (which is already YYYY-MM-DD)
-      const [year, month, day] = dateKey.split('-').map(Number);
-      const date = new Date(year, month - 1, day);
-      const formattedDate = date.toLocaleDateString([], { year: 'numeric', month: 'long', day: 'numeric' });
-
-      acc[dateKey] = {
-        totalFactoryTime,
-        totalExecutionTime,
-        totalOtherStepsTime,
-        totalPassCount: passes.length,
-        executionPercentage,
-        formattedDate,
-        totalBluePoints,
-        symptomCounts,
-        causeCounts
-      };
-
-      return acc;
-    }, {});
-  }, [groupedPasses, passDiagnoses]);
+        return acc
+      },
+      {}
+    )
+  }, [groupedPasses, passDiagnoses])
 
   const toggleRowExpansion = (index: string) => {
-    const newExpandedRows = new Set(expandedRows);
-    const isExpanding = !newExpandedRows.has(index);
+    const newExpandedRows = new Set(expandedRows)
+    const isExpanding = !newExpandedRows.has(index)
 
     if (isExpanding) {
-      newExpandedRows.add(index);
-      
+      newExpandedRows.add(index)
+
       // Fetch config metadata when expanding a row
-      const [dayIndexStr, passIndexStr] = index.split('-');
-      const dayIndex = parseInt(dayIndexStr);
-      const passIndex = parseInt(passIndexStr);
-      const dateKey = Object.keys(groupedPasses)[dayIndex];
-      const pass = groupedPasses[dateKey]?.[passIndex];
-      
-      if (pass && !configMetadata.has(pass.pass_id) && !loadingConfigMetadata.has(pass.pass_id)) {
-        const flatPasses = Object.values(groupedPasses).flat();
-        const { prevPass } = getPassConfigComparison(pass, flatPasses, configMetadata);
-        fetchConfigMetadata(pass, prevPass);
+      const [dayIndexStr, passIndexStr] = index.split('-')
+      const dayIndex = parseInt(dayIndexStr)
+      const passIndex = parseInt(passIndexStr)
+      const dateKey = Object.keys(groupedPasses)[dayIndex]
+      const pass = groupedPasses[dateKey]?.[passIndex]
+
+      if (
+        pass &&
+        !configMetadata.has(pass.pass_id) &&
+        !loadingConfigMetadata.has(pass.pass_id)
+      ) {
+        const flatPasses = Object.values(groupedPasses).flat()
+        const { prevPass } = getPassConfigComparison(
+          pass,
+          flatPasses,
+          configMetadata
+        )
+        fetchConfigMetadata(pass, prevPass)
       }
     } else {
-      newExpandedRows.delete(index);
+      newExpandedRows.delete(index)
     }
-    setExpandedRows(newExpandedRows);
-  };
+    setExpandedRows(newExpandedRows)
+  }
 
   const fetchConfigMetadata = async (pass: Pass, prevPass: Pass | null) => {
-    if (!partId) return;
+    if (!partId) return
 
-    const passId = pass.pass_id;
-    const prevPassId = prevPass?.pass_id;
+    const passId = pass.pass_id
+    const prevPassId = prevPass?.pass_id
 
-    const idsToLoad = [passId];
+    const idsToLoad = [passId]
     if (prevPassId && !configMetadata.has(prevPassId)) {
-      idsToLoad.push(prevPassId);
+      idsToLoad.push(prevPassId)
     }
 
-    setLoadingConfigMetadata(prev => new Set([...prev, ...idsToLoad]));
+    setLoadingConfigMetadata((prev) => new Set([...prev, ...idsToLoad]))
 
     try {
-      const promises = [getRobotConfigAtTime(viamClient, partId, pass.start)];
+      const promises = [getRobotConfigAtTime(viamClient, partId, pass.start)]
       if (prevPass) {
-        promises.push(getRobotConfigAtTime(viamClient, partId, prevPass.start));
+        promises.push(getRobotConfigAtTime(viamClient, partId, prevPass.start))
       }
 
-      const results = await Promise.all(promises);
-      
-      const newMetadatas = new Map<string, RobotConfigMetadata>();
+      const results = await Promise.all(promises)
+
+      const newMetadatas = new Map<string, RobotConfigMetadata>()
       if (results[0]) {
-        newMetadatas.set(passId, results[0].metadata);
+        newMetadatas.set(passId, results[0].metadata)
       }
       if (prevPassId && results[1]) {
-        newMetadatas.set(prevPassId, results[1].metadata);
+        newMetadatas.set(prevPassId, results[1].metadata)
       }
 
       if (newMetadatas.size > 0) {
-        setConfigMetadata(prev => new Map([...prev, ...newMetadatas]));
+        setConfigMetadata((prev) => new Map([...prev, ...newMetadatas]))
       }
     } catch (error) {
-      console.error('Error fetching config metadata:', error);
+      console.error('Error fetching config metadata:', error)
     } finally {
-      setLoadingConfigMetadata(prev => {
-        const newSet = new Set(prev);
-        idsToLoad.forEach(id => newSet.delete(id));
-        return newSet;
-      });
+      setLoadingConfigMetadata((prev) => {
+        const newSet = new Set(prev)
+        idsToLoad.forEach((id) => newSet.delete(id))
+        return newSet
+      })
     }
-  };
+  }
 
   const toggleFilesExpansion = (passId: string) => {
-    const newExpandedFiles = new Set(expandedFiles);
+    const newExpandedFiles = new Set(expandedFiles)
     if (newExpandedFiles.has(passId)) {
-      newExpandedFiles.delete(passId);
+      newExpandedFiles.delete(passId)
     } else {
-      newExpandedFiles.add(passId);
+      newExpandedFiles.add(passId)
     }
-    setExpandedFiles(newExpandedFiles);
-  };
+    setExpandedFiles(newExpandedFiles)
+  }
 
   const handleFileSearchChange = (passId: string, value: string) => {
-    setFileSearchInputs(prev => ({
+    setFileSearchInputs((prev) => ({
       ...prev,
-      [passId]: value
-    }));
-  };
+      [passId]: value,
+    }))
+  }
 
   const getStatusBadge = (success: boolean) => {
     if (success) {
@@ -801,60 +912,67 @@ const AppInterface: React.FC<AppViewProps> = ({
         <span className="moveleft inline-flex items-center justify-center py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 status-badge-width">
           Success
         </span>
-      );
+      )
     } else {
       return (
         <span className="moveleft inline-flex items-center justify-center py-1 rounded-full text-xs font-medium bg-red-100 text-red-800 status-badge-width">
           Failed
         </span>
-      );
+      )
     }
-  };
+  }
 
   const handleDownloadConfig = async (pass: Pass) => {
     if (!partId) {
-      alert('Unable to download config: missing required information');
-      return;
+      alert('Unable to download config: missing required information')
+      return
     }
 
-    const passId = pass.pass_id;
-    
+    const passId = pass.pass_id
+
     // Add to downloading state
-    setDownloadingConfigs(prev => new Set(prev).add(passId));
+    setDownloadingConfigs((prev) => new Set(prev).add(passId))
 
     try {
       // Fetch the config that was active at the pass start time
-      const result = await getRobotConfigAtTime(viamClient, partId, pass.start);
-      
+      const result = await getRobotConfigAtTime(viamClient, partId, pass.start)
+
       if (!result) {
-        alert('No configuration found for this time period');
-        return;
+        alert('No configuration found for this time period')
+        return
       }
 
       // Store metadata for display (if not already stored)
       if (!configMetadata.has(passId)) {
-        setConfigMetadata(prev => new Map(prev).set(passId, result.metadata));
+        setConfigMetadata((prev) => new Map(prev).set(passId, result.metadata))
       }
 
       // Download the config
-      downloadRobotConfig(result.config, passId, result.metadata.configTimestamp, machineId);
+      downloadRobotConfig(
+        result.config,
+        passId,
+        result.metadata.configTimestamp,
+        machineId
+      )
     } catch (error) {
-      console.error('Error downloading config:', error);
-      alert('Failed to download configuration. Please try again.');
+      console.error('Error downloading config:', error)
+      alert('Failed to download configuration. Please try again.')
     } finally {
       // Remove from downloading state
-      setDownloadingConfigs(prev => {
-        const newSet = new Set(prev);
-        newSet.delete(passId);
-        return newSet;
-      });
+      setDownloadingConfigs((prev) => {
+        const newSet = new Set(prev)
+        newSet.delete(passId)
+        return newSet
+      })
     }
-  };
+  }
 
   return (
     <div className="appInterface">
       <header className="flex items-center sticky top-0 z-10 mb-4 px-4 py-3 border-b bg-zinc-50 shadow-none md:shadow-xs">
-        <div className="w-1/3 h-5 font-semibold text-zinc-900">Sanding history (legacy UI)</div>
+        <div className="w-1/3 h-5 font-semibold text-zinc-900">
+          Sanding history (legacy UI)
+        </div>
 
         <div className="w-1/3 flex justify-center">
           <div className="flex flex-row items-center gap-2">
@@ -873,30 +991,40 @@ const AppInterface: React.FC<AppViewProps> = ({
       <main className="mainContent">
         {activeRoute === 'live' && (
           <section>
-            <div className='flex gap-8'>
+            <div className="flex gap-8">
               {machineName && (
                 <div className="video-store-selector">
-                  <div className="video-store-selector-label" style={{ marginBottom: '0.6rem' }}>Machine name</div>
+                  <div
+                    className="video-store-selector-label"
+                    style={{ marginBottom: '0.6rem' }}
+                  >
+                    Machine name
+                  </div>
                   <div>
-                    <span style={{
-                      display: 'inline-block',
-                      backgroundColor: '#f3f3f3',
-                      color: 'rgb(37 37 37)',
-                      padding: '0.5rem 0.75rem',
-                      borderRadius: '0.375rem',
-                      fontSize: '14px',
-                      fontWeight: '600',
-                    }}>
+                    <span
+                      style={{
+                        display: 'inline-block',
+                        backgroundColor: '#f3f3f3',
+                        color: 'rgb(37 37 37)',
+                        padding: '0.5rem 0.75rem',
+                        borderRadius: '0.375rem',
+                        fontSize: '14px',
+                        fontWeight: '600',
+                      }}
+                    >
                       {machineName}
                     </span>
                   </div>
                 </div>
               )}
 
-              <VideoStoreSelector onVideoStoreSelected={setVideoStoreClient}/>
+              <VideoStoreSelector onVideoStoreSelected={setVideoStoreClient} />
 
               <div className="video-store-selector">
-                <label htmlFor="camera-select" className="video-store-selector-label">
+                <label
+                  htmlFor="camera-select"
+                  className="video-store-selector-label"
+                >
                   Select camera resource
                 </label>
                 {!robotClient ? (
@@ -908,14 +1036,16 @@ const AppInterface: React.FC<AppViewProps> = ({
                     id="camera-select"
                     value={selectedCamera}
                     onChange={(e) => {
-                      setSelectedCamera(e.target.value);
-                      localStorage.setItem('selectedCamera', e.target.value);
+                      setSelectedCamera(e.target.value)
+                      localStorage.setItem('selectedCamera', e.target.value)
                     }}
                     className="video-store-selector-select"
                   >
                     <option value="">Select a camera resource</option>
-                    {cameraComponentNames.map(name => (
-                      <option key={name} value={name}>{name}</option>
+                    {cameraComponentNames.map((name) => (
+                      <option key={name} value={name}>
+                        {name}
+                      </option>
                     ))}
                   </select>
                 ) : (
@@ -944,858 +1074,1682 @@ const AppInterface: React.FC<AppViewProps> = ({
                   </tr>
                 </thead>
                 <tbody>
-                  {Object.entries(groupedPasses).map(([dateKey, passes], dayIndex) => {
-                    return (
-                      <React.Fragment key={dateKey}>
-                        <DaySummaryHeader data={dayAggregates[dateKey]} />
-                        {passes.map((pass: Pass, passIndex: number) => {
-                          const globalIndex = `${dayIndex}-${passIndex}`;
-                          const passId = pass.pass_id;
-                          const passNotesData = passNotes.get(passId) || [];
-                          const execMs = getExecutionTimeMs(pass);
+                  {Object.entries(groupedPasses).map(
+                    ([dateKey, passes], dayIndex) => {
+                      return (
+                        <React.Fragment key={dateKey}>
+                          <DaySummaryHeader data={dayAggregates[dateKey]} />
+                          {passes.map((pass: Pass, passIndex: number) => {
+                            const globalIndex = `${dayIndex}-${passIndex}`
+                            const passId = pass.pass_id
+                            const passNotesData = passNotes.get(passId) || []
+                            const execMs = getExecutionTimeMs(pass)
 
-                          return (
-                            <React.Fragment key={pass.pass_id || globalIndex}>
-                              <tr className="expandable-row"
-                                onClick={() => toggleRowExpansion(globalIndex)}
-                                role="button"
-                                tabIndex={0}
-                                onKeyDown={(e) => {
-                                  if (e.key === 'Enter' || e.key === ' ') {
-                                    e.preventDefault();
-                                    toggleRowExpansion(globalIndex);
+                            return (
+                              <React.Fragment key={pass.pass_id || globalIndex}>
+                                <tr
+                                  className="expandable-row"
+                                  onClick={() =>
+                                    toggleRowExpansion(globalIndex)
                                   }
-                                }}
-                                aria-expanded={expandedRows.has(globalIndex)}
-                                aria-label={`${expandedRows.has(globalIndex) ? 'Collapse' : 'Expand'} details for pass from ${pass.start.toLocaleTimeString()}`}>
-                                <td>
-                                  <span className={`expand-icon ${expandedRows.has(globalIndex) ? 'expanded' : ''}`} aria-hidden="true">
-                                    ▶
-                                  </span>
-                                </td>
-                                <td className="text-zinc-700">{pass.start.toLocaleDateString()}</td>
-                                <td className="text-zinc-700 text-xs">
-                                  {pass.pass_id ? (
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                      <button
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          navigator.clipboard.writeText(pass.pass_id);
-                                          // Show copied feedback
-                                          const btn = e.currentTarget;
-                                          const svg = btn.querySelector('svg');
-                                          const textSpan = btn.querySelector('span');
-                                          // Change to green success state
-                                          btn.style.backgroundColor = '#dcfce7';
-                                          btn.style.color = '#166534';
-                                          if (svg) {
-                                            svg.innerHTML = '<path d="M21,7L9,19L3.5,13.5L4.91,12.09L9,16.17L19.59,5.59L21,7Z" />';
-                                            svg.style.fill = '#166534';
-                                          }
-                                          if (textSpan) {
-                                            textSpan.style.color = '#166534';
-                                          }
-                                          setTimeout(() => {
-                                            btn.style.backgroundColor = '#f3f4f6';
-                                            btn.style.color = '';
-                                            if (svg) {
-                                              svg.innerHTML = '<path d="M19,21H8V7H19M19,5H8A2,2 0 0,0 6,7V21A2,2 0 0,0 8,23H19A2,2 0 0,0 21,21V7A2,2 0 0,0 19,5M16,1H4A2,2 0 0,0 2,3V17H4V3H16V1Z" />';
-                                              svg.style.fill = '#9ca3af';
-                                            }
-                                            if (textSpan) {
-                                              textSpan.style.color = '#52525b';
-                                            }
-                                          }, 1500);
-                                        }}
-                                        className="inline-flex items-center justify-center py-1 rounded text-xs font-medium cursor-pointer"
-                                        title={`Copy pass ID: ${pass.pass_id}`}
-                                        style={{ 
-                                          backgroundColor: '#f3f4f6',
-                                          border: 'none',
-                                          gap: '6px',
-                                          paddingLeft: '10px',
-                                          paddingRight: '10px',
-                                          transition: 'background-color 0.15s ease',
-                                          cursor: 'pointer'
-                                        }}
-                                        onMouseEnter={(e) => {
-                                          const btn = e.currentTarget;
-                                          const svg = btn.querySelector('svg');
-                                          const textSpan = btn.querySelector('span');
-                                          if (btn.style.backgroundColor !== 'rgb(220, 252, 231)') { // not in success state
-                                            btn.style.backgroundColor = '#dbeafe';
-                                            if (svg) svg.style.fill = '#2563eb';
-                                            if (textSpan) textSpan.style.color = '#2563eb';
-                                          }
-                                        }}
-                                        onMouseLeave={(e) => {
-                                          const btn = e.currentTarget;
-                                          const svg = btn.querySelector('svg');
-                                          const textSpan = btn.querySelector('span');
-                                          if (btn.style.backgroundColor !== 'rgb(220, 252, 231)') { // not in success state
-                                            btn.style.backgroundColor = '#f3f4f6';
-                                            if (svg) svg.style.fill = '#9ca3af';
-                                            if (textSpan) textSpan.style.color = '#52525b';
-                                          }
-                                        }}
-                                      >
-                                        <span style={{ fontFamily: 'ui-monospace, SFMono-Regular, SF Mono, Menlo, Consolas, Liberation Mono, monospace', color: '#52525b', fontSize: '11px' }}>{pass.pass_id.substring(0, 8)}</span>
-                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" style={{ width: '12px', height: '12px', fill: '#9ca3af', transition: 'fill 0.15s ease' }}>
-                                          <path d="M19,21H8V7H19M19,5H8A2,2 0 0,0 6,7V21A2,2 0 0,0 8,23H19A2,2 0 0,0 21,21V7A2,2 0 0,0 19,5M16,1H4A2,2 0 0,0 2,3V17H4V3H16V1Z" />
-                                        </svg>
-                                      </button>
-                                      {(() => {
-                                        const hasNotes = passNotesData.length > 0 && passNotesData[0].note_text.trim();
-                                        const diagnosisData = passDiagnoses.get(passId);
-                                        const hasDiagnosis = diagnosisData && (diagnosisData.symptom || diagnosisData.cause);
-                                        
-                                        if (hasNotes || hasDiagnosis) {
-                                          return (
-                                            <span
-                                              style={{
-                                                fontSize: '18px',
-                                                display: 'flex',
-                                                alignItems: 'center'
-                                              }}
-                                              title={hasNotes && hasDiagnosis ? "This pass has notes and diagnosis" : hasNotes ? "This pass has notes" : "This pass has diagnosis"}
-                                            >
-                                              📝
-                                            </span>
-                                          );
-                                        }
-                                        return null;
-                                      })()}
-                                    </div>
-                                  ) : (
-                                    '—'
-                                  )}
-                                </td>
-                                <td>{getStatusBadge(pass.success)}</td>
-                                <td className="text-zinc-700">{pass.start.toLocaleTimeString()}</td>
-                                <td className="text-zinc-700">{pass.end.toLocaleTimeString()}</td>
-                                <td className="text-zinc-700">{formatDurationToMinutesSeconds(pass.start, pass.end)}</td>
-                                <td className="text-zinc-700">
-                                  {formatDurationToMinutesSeconds(new Date(0), new Date(execMs))}
-                                </td>
-                                <td className="text-zinc-700">
-                                  {pass.blue_point_count !== undefined ? pass.blue_point_count.toLocaleString() : '—'}
-                                </td>
-                                <td className="text-zinc-700">
-                                  {pass.steps ? `${pass.steps.length} steps` : '—'}
-                                </td>
-                                <td className="text-zinc-700">
-                                  {pass.err_string ? (
-                                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '4px' }}>
-                                      <span 
-                                        className="text-red-600 text-xxs font-mono error-text" 
-                                        title={pass.err_string}
+                                  role="button"
+                                  tabIndex={0}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter' || e.key === ' ') {
+                                      e.preventDefault()
+                                      toggleRowExpansion(globalIndex)
+                                    }
+                                  }}
+                                  aria-expanded={expandedRows.has(globalIndex)}
+                                  aria-label={`${expandedRows.has(globalIndex) ? 'Collapse' : 'Expand'} details for pass from ${pass.start.toLocaleTimeString()}`}
+                                >
+                                  <td>
+                                    <span
+                                      className={`expand-icon ${expandedRows.has(globalIndex) ? 'expanded' : ''}`}
+                                      aria-hidden="true"
+                                    >
+                                      ▶
+                                    </span>
+                                  </td>
+                                  <td className="text-zinc-700">
+                                    {pass.start.toLocaleDateString()}
+                                  </td>
+                                  <td className="text-zinc-700 text-xs">
+                                    {pass.pass_id ? (
+                                      <div
                                         style={{
-                                          display: 'block',
-                                          maxWidth: '100%',
-                                          wordBreak: 'break-word',
-                                          whiteSpace: 'pre-wrap'
+                                          display: 'flex',
+                                          alignItems: 'center',
+                                          gap: '4px',
                                         }}
                                       >
-                                        {expandedErrors.has(pass.pass_id) 
-                                          ? pass.err_string 
-                                          : pass.err_string.length > 200 
-                                            ? `${pass.err_string.substring(0, 200)}...` 
-                                            : pass.err_string
-                                        }
-                                      </span>
-                                      {pass.err_string.length > 200 && (
                                         <button
                                           onClick={(e) => {
-                                            e.stopPropagation();
-                                            setExpandedErrors(prev => {
-                                              const newSet = new Set(prev);
-                                              if (newSet.has(pass.pass_id)) {
-                                                newSet.delete(pass.pass_id);
-                                              } else {
-                                                newSet.add(pass.pass_id);
+                                            e.stopPropagation()
+                                            navigator.clipboard.writeText(
+                                              pass.pass_id
+                                            )
+                                            // Show copied feedback
+                                            const btn = e.currentTarget
+                                            const svg = btn.querySelector('svg')
+                                            const textSpan =
+                                              btn.querySelector('span')
+                                            // Change to green success state
+                                            btn.style.backgroundColor =
+                                              '#dcfce7'
+                                            btn.style.color = '#166534'
+                                            if (svg) {
+                                              svg.innerHTML =
+                                                '<path d="M21,7L9,19L3.5,13.5L4.91,12.09L9,16.17L19.59,5.59L21,7Z" />'
+                                              svg.style.fill = '#166534'
+                                            }
+                                            if (textSpan) {
+                                              textSpan.style.color = '#166534'
+                                            }
+                                            setTimeout(() => {
+                                              btn.style.backgroundColor =
+                                                '#f3f4f6'
+                                              btn.style.color = ''
+                                              if (svg) {
+                                                svg.innerHTML =
+                                                  '<path d="M19,21H8V7H19M19,5H8A2,2 0 0,0 6,7V21A2,2 0 0,0 8,23H19A2,2 0 0,0 21,21V7A2,2 0 0,0 19,5M16,1H4A2,2 0 0,0 2,3V17H4V3H16V1Z" />'
+                                                svg.style.fill = '#9ca3af'
                                               }
-                                              return newSet;
-                                            });
+                                              if (textSpan) {
+                                                textSpan.style.color = '#52525b'
+                                              }
+                                            }, 1500)
                                           }}
+                                          className="inline-flex items-center justify-center py-1 rounded text-xs font-medium cursor-pointer"
+                                          title={`Copy pass ID: ${pass.pass_id}`}
                                           style={{
-                                            padding: '2px 8px',
-                                            fontSize: '11px',
-                                            backgroundColor: '#eee',
-                                            color: '#db5353ff',
+                                            backgroundColor: '#f3f4f6',
                                             border: 'none',
-                                            borderRadius: '3px',
+                                            gap: '6px',
+                                            paddingLeft: '10px',
+                                            paddingRight: '10px',
+                                            transition:
+                                              'background-color 0.15s ease',
                                             cursor: 'pointer',
-                                            transition: 'background-color 0.2s',
-                                            fontWeight: 'bold'
                                           }}
-                                          onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#db5353ff'; e.currentTarget.style.color = '#fff'; }}
-                                          onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = '#eee'; e.currentTarget.style.color = '#db5353ff'; }}
+                                          onMouseEnter={(e) => {
+                                            const btn = e.currentTarget
+                                            const svg = btn.querySelector('svg')
+                                            const textSpan =
+                                              btn.querySelector('span')
+                                            if (
+                                              btn.style.backgroundColor !==
+                                              'rgb(220, 252, 231)'
+                                            ) {
+                                              // not in success state
+                                              btn.style.backgroundColor =
+                                                '#dbeafe'
+                                              if (svg)
+                                                svg.style.fill = '#2563eb'
+                                              if (textSpan)
+                                                textSpan.style.color = '#2563eb'
+                                            }
+                                          }}
+                                          onMouseLeave={(e) => {
+                                            const btn = e.currentTarget
+                                            const svg = btn.querySelector('svg')
+                                            const textSpan =
+                                              btn.querySelector('span')
+                                            if (
+                                              btn.style.backgroundColor !==
+                                              'rgb(220, 252, 231)'
+                                            ) {
+                                              // not in success state
+                                              btn.style.backgroundColor =
+                                                '#f3f4f6'
+                                              if (svg)
+                                                svg.style.fill = '#9ca3af'
+                                              if (textSpan)
+                                                textSpan.style.color = '#52525b'
+                                            }
+                                          }}
                                         >
-                                          {expandedErrors.has(pass.pass_id) ? 'Show less' : 'Show more'}
+                                          <span
+                                            style={{
+                                              fontFamily:
+                                                'ui-monospace, SFMono-Regular, SF Mono, Menlo, Consolas, Liberation Mono, monospace',
+                                              color: '#52525b',
+                                              fontSize: '11px',
+                                            }}
+                                          >
+                                            {pass.pass_id.substring(0, 8)}
+                                          </span>
+                                          <svg
+                                            xmlns="http://www.w3.org/2000/svg"
+                                            viewBox="0 0 24 24"
+                                            style={{
+                                              width: '12px',
+                                              height: '12px',
+                                              fill: '#9ca3af',
+                                              transition: 'fill 0.15s ease',
+                                            }}
+                                          >
+                                            <path d="M19,21H8V7H19M19,5H8A2,2 0 0,0 6,7V21A2,2 0 0,0 8,23H19A2,2 0 0,0 21,21V7A2,2 0 0,0 19,5M16,1H4A2,2 0 0,0 2,3V17H4V3H16V1Z" />
+                                          </svg>
                                         </button>
-                                      )}
-                                    </div>
-                                  ) : (
-                                    <span className="text-gray-600">—</span>
-                                  )}
-                                </td>
-                              </tr>{expandedRows.has(globalIndex) && (
-                                <tr className="expanded-content">
-                                  <td colSpan={11}>
-                                    <div className="pass-details">
-                                      {/* Build information section moved inside expanded row */}
-                                      {pass.build_info && (
-                                        <div className="flex gap-8">
-                                          <div className="info-section">
-                                            <div style={{ 
-                                              display: 'flex', 
-                                              alignItems: 'center',
-                                              marginBottom: '12px'
-                                            }}>
-                                              <h4 style={{ margin: 0 }}>Blue points</h4>
-                                            </div>
-                                            <div className="info-grid">
-                                              {pass.blue_point_count !== undefined && (
-                                                <div className="info-item">
-                                                  <span className="info-label">
-                                                    Blue Points
-                                                    {pass.blue_point_diff_percent !== undefined && (
-                                                      <span style={{ 
-                                                        marginLeft: '8px', 
-                                                        fontSize: '12px',
-                                                        color: '#6b7280',
-                                                        fontWeight: '500'
-                                                      }}>
-                                                        ({pass.blue_point_diff_percent > 0 ? '+' : ''}{pass.blue_point_diff_percent.toFixed(1)}%)
-                                                      </span>
-                                                    )}
-                                                  </span>
-                                                  <span className="info-value">
-                                                    {pass.blue_point_count.toLocaleString()}
-                                                  </span>
-                                                </div>
-                                              )}
-                                              
-                                              {pass.sanding_distance_mm !== undefined && (
-                                                <div className="info-item">
-                                                  <span className="info-label">Sanding Distance</span>
-                                                  <span className="info-value">
-                                                    {pass.sanding_distance_mm >= 1000 
-                                                      ? `${(pass.sanding_distance_mm / 1000).toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 2 })} m`
-                                                      : `${pass.sanding_distance_mm.toFixed(1)} mm`
-                                                    }
-                                                  </span>
-                                                </div>
-                                              )}
-                                            </div>
-                                          </div>
-                                          <div className="info-section">
-                                            <div style={{ 
-                                              display: 'flex', 
-                                              alignItems: 'center',
-                                              marginBottom: '12px'
-                                            }}>
-                                              <h4 style={{ margin: 0 }}>Build information</h4>
-                                            </div>
+                                        {(() => {
+                                          const hasNotes =
+                                            passNotesData.length > 0 &&
+                                            passNotesData[0].note_text.trim()
+                                          const diagnosisData =
+                                            passDiagnoses.get(passId)
+                                          const hasDiagnosis =
+                                            diagnosisData &&
+                                            (diagnosisData.symptom ||
+                                              diagnosisData.cause)
 
-                                            {(pass.build_info.version || pass.build_info.git_revision || pass.build_info.date_compiled) ? (
+                                          if (hasNotes || hasDiagnosis) {
+                                            return (
+                                              <span
+                                                style={{
+                                                  fontSize: '18px',
+                                                  display: 'flex',
+                                                  alignItems: 'center',
+                                                }}
+                                                title={
+                                                  hasNotes && hasDiagnosis
+                                                    ? 'This pass has notes and diagnosis'
+                                                    : hasNotes
+                                                      ? 'This pass has notes'
+                                                      : 'This pass has diagnosis'
+                                                }
+                                              >
+                                                📝
+                                              </span>
+                                            )
+                                          }
+                                          return null
+                                        })()}
+                                      </div>
+                                    ) : (
+                                      '—'
+                                    )}
+                                  </td>
+                                  <td>{getStatusBadge(pass.success)}</td>
+                                  <td className="text-zinc-700">
+                                    {pass.start.toLocaleTimeString()}
+                                  </td>
+                                  <td className="text-zinc-700">
+                                    {pass.end.toLocaleTimeString()}
+                                  </td>
+                                  <td className="text-zinc-700">
+                                    {formatDurationToMinutesSeconds(
+                                      pass.start,
+                                      pass.end
+                                    )}
+                                  </td>
+                                  <td className="text-zinc-700">
+                                    {formatDurationToMinutesSeconds(
+                                      new Date(0),
+                                      new Date(execMs)
+                                    )}
+                                  </td>
+                                  <td className="text-zinc-700">
+                                    {pass.blue_point_count !== undefined
+                                      ? pass.blue_point_count.toLocaleString()
+                                      : '—'}
+                                  </td>
+                                  <td className="text-zinc-700">
+                                    {pass.steps
+                                      ? `${pass.steps.length} steps`
+                                      : '—'}
+                                  </td>
+                                  <td className="text-zinc-700">
+                                    {pass.err_string ? (
+                                      <div
+                                        style={{
+                                          display: 'flex',
+                                          flexDirection: 'column',
+                                          alignItems: 'flex-start',
+                                          gap: '4px',
+                                        }}
+                                      >
+                                        <span
+                                          className="text-red-600 text-xxs font-mono error-text"
+                                          title={pass.err_string}
+                                          style={{
+                                            display: 'block',
+                                            maxWidth: '100%',
+                                            wordBreak: 'break-word',
+                                            whiteSpace: 'pre-wrap',
+                                          }}
+                                        >
+                                          {expandedErrors.has(pass.pass_id)
+                                            ? pass.err_string
+                                            : pass.err_string.length > 200
+                                              ? `${pass.err_string.substring(0, 200)}...`
+                                              : pass.err_string}
+                                        </span>
+                                        {pass.err_string.length > 200 && (
+                                          <button
+                                            onClick={(e) => {
+                                              e.stopPropagation()
+                                              setExpandedErrors((prev) => {
+                                                const newSet = new Set(prev)
+                                                if (newSet.has(pass.pass_id)) {
+                                                  newSet.delete(pass.pass_id)
+                                                } else {
+                                                  newSet.add(pass.pass_id)
+                                                }
+                                                return newSet
+                                              })
+                                            }}
+                                            style={{
+                                              padding: '2px 8px',
+                                              fontSize: '11px',
+                                              backgroundColor: '#eee',
+                                              color: '#db5353ff',
+                                              border: 'none',
+                                              borderRadius: '3px',
+                                              cursor: 'pointer',
+                                              transition:
+                                                'background-color 0.2s',
+                                              fontWeight: 'bold',
+                                            }}
+                                            onMouseEnter={(e) => {
+                                              e.currentTarget.style.backgroundColor =
+                                                '#db5353ff'
+                                              e.currentTarget.style.color =
+                                                '#fff'
+                                            }}
+                                            onMouseLeave={(e) => {
+                                              e.currentTarget.style.backgroundColor =
+                                                '#eee'
+                                              e.currentTarget.style.color =
+                                                '#db5353ff'
+                                            }}
+                                          >
+                                            {expandedErrors.has(pass.pass_id)
+                                              ? 'Show less'
+                                              : 'Show more'}
+                                          </button>
+                                        )}
+                                      </div>
+                                    ) : (
+                                      <span className="text-gray-600">—</span>
+                                    )}
+                                  </td>
+                                </tr>
+                                {expandedRows.has(globalIndex) && (
+                                  <tr className="expanded-content">
+                                    <td colSpan={11}>
+                                      <div className="pass-details">
+                                        {/* Build information section moved inside expanded row */}
+                                        {pass.build_info && (
+                                          <div className="flex gap-8">
+                                            <div className="info-section">
+                                              <div
+                                                style={{
+                                                  display: 'flex',
+                                                  alignItems: 'center',
+                                                  marginBottom: '12px',
+                                                }}
+                                              >
+                                                <h4 style={{ margin: 0 }}>
+                                                  Blue points
+                                                </h4>
+                                              </div>
                                               <div className="info-grid">
-                                                {/* Version */}
-                                                {pass.build_info.version && (
+                                                {pass.blue_point_count !==
+                                                  undefined && (
                                                   <div className="info-item">
-                                                    <span className="info-label">Version</span>
-                                                    <span className="info-value">{pass.build_info.version}</span>
-                                                  </div>
-                                                )}
-
-                                                {/* Git Revision */}
-                                                {pass.build_info.git_revision && (
-                                                  <div className="info-item">
-                                                    <span className="info-label">Git revision</span>
-                                                    <span className="info-value">{pass.build_info.git_revision}</span>
-                                                  </div>
-                                                )}
-
-                                                {/* Date Compiled */}
-                                                {pass.build_info.date_compiled && (
-                                                  <div className="info-item">
-                                                    <span className="info-label">Date compiled</span>
-                                                    <span className="info-value">{pass.build_info.date_compiled}</span>
-                                                  </div>
-                                                )}
-                                              </div>
-                                            ) : (
-                                              <div className="info-notice">
-                                                Build information not available for this run.
-                                              </div>
-                                            )}
-                                          </div>
-                                          <div className="info-section">
-                                            <div style={{ 
-                                              display: 'flex', 
-                                              alignItems: 'center',
-                                              marginBottom: '12px'
-                                            }}>
-                                              <h4 style={{ margin: 0 }}>Config information</h4>
-                                              {(() => {
-                                                const flatPasses = Object.values(groupedPasses).flat();
-                                                const { prevPass, configChanged } = getPassConfigComparison(pass, flatPasses, configMetadata);
-
-                                                // If the previous pass exists but we don't have its metadata yet,
-                                                // trigger a fetch. The UI will update on the next render cycle.
-                                                if (prevPass && !configMetadata.has(prevPass.pass_id) && !loadingConfigMetadata.has(prevPass.pass_id)) {
-                                                  fetchConfigMetadata(pass, prevPass);
-                                                }
-
-                                                // Only show the badge if the metadata for both passes has been loaded and they are different.
-                                                if (configChanged) {
-                                                  return (
-                                                    <div style={{
-                                                      marginLeft: '12px',
-                                                      fontSize: '12px',
-                                                      color: '#4f46e5',
-                                                      backgroundColor: '#eef2ff',
-                                                      padding: '2px 8px',
-                                                      borderRadius: '9999px',
-                                                      fontWeight: 500,
-                                                    }}>
-                                                      Config changed since last run
-                                                    </div>
-                                                  );
-                                                }
-                                                return null;
-                                              })()}
-                                            </div>
-                                            
-                                            {loadingConfigMetadata.has(pass.pass_id) ? (
-                                              <div style={{ 
-                                                display: 'flex', 
-                                                alignItems: 'center', 
-                                                gap: '8px',
-                                                marginBottom: '12px',
-                                                color: '#6b7280',
-                                                fontSize: '14px'
-                                              }}>
-                                                <div style={{
-                                                  width: '16px',
-                                                  height: '16px',
-                                                  border: '2px solid rgba(59, 130, 246, 0.2)',
-                                                  borderTop: '2px solid #3b82f6',
-                                                  borderRadius: '50%',
-                                                  animation: 'spin 1s linear infinite'
-                                                }} />
-                                                Loading config info...
-                                              </div>
-                                            ) : configMetadata.has(pass.pass_id) ? (
-                                              <div className="info-grid" style={{ marginBottom: '12px' }}>
-                                                {(() => {
-                                                  const metadata = configMetadata.get(pass.pass_id)!;
-                                                  return (
-                                                    <>
-                                                      <div className="info-item">
-                                                        <span className="info-label">Timestamp</span>
-                                                        <span className="info-value">
-                                                          {metadata.configTimestamp.toLocaleString()}
-                                                        </span>
-                                                      </div>
-                                                      <div className="info-item">
-                                                        <button
-                                                          onClick={() => handleDownloadConfig(pass)}
-                                                          disabled={downloadingConfigs.has(pass.pass_id)}
+                                                    <span className="info-label">
+                                                      Blue Points
+                                                      {pass.blue_point_diff_percent !==
+                                                        undefined && (
+                                                        <span
                                                           style={{
-                                                            padding: '6px 12px',
+                                                            marginLeft: '8px',
                                                             fontSize: '12px',
-                                                            backgroundColor: downloadingConfigs.has(pass.pass_id) ? '#9ca3af' : '#3b82f6',
-                                                            color: 'white',
-                                                            border: 'none',
-                                                            borderRadius: '4px',
-                                                            cursor: downloadingConfigs.has(pass.pass_id) ? 'not-allowed' : 'pointer',
-                                                            transition: 'background-color 0.2s',
-                                                            display: 'flex',
-                                                            alignItems: 'center',
-                                                            gap: '6px'
-                                                          }}
-                                                          onMouseEnter={(e) => {
-                                                            if (!downloadingConfigs.has(pass.pass_id)) {
-                                                              e.currentTarget.style.backgroundColor = '#2563eb';
-                                                            }
-                                                          }}
-                                                          onMouseLeave={(e) => {
-                                                            if (!downloadingConfigs.has(pass.pass_id)) {
-                                                              e.currentTarget.style.backgroundColor = '#3b82f6';
-                                                            }
+                                                            color: '#6b7280',
+                                                            fontWeight: '500',
                                                           }}
                                                         >
-                                                          {downloadingConfigs.has(pass.pass_id) ? (
-                                                            <>
-                                                              <div
-                                                                style={{
-                                                                  width: '12px',
-                                                                  height: '12px',
-                                                                  border: '2px solid #ffffff',
-                                                                  borderTop: '2px solid transparent',
-                                                                  borderRadius: '50%',
-                                                                  animation: 'spin 1s linear infinite'
-                                                                }}
-                                                              />
-                                                              Downloading...
-                                                            </>
-                                                          ) : (
-                                                            <>
-                                                              Download config
-                                                            </>
+                                                          (
+                                                          {pass.blue_point_diff_percent >
+                                                          0
+                                                            ? '+'
+                                                            : ''}
+                                                          {pass.blue_point_diff_percent.toFixed(
+                                                            1
                                                           )}
-                                                        </button>
+                                                          %)
+                                                        </span>
+                                                      )}
+                                                    </span>
+                                                    <span className="info-value">
+                                                      {pass.blue_point_count.toLocaleString()}
+                                                    </span>
+                                                  </div>
+                                                )}
+
+                                                {pass.sanding_distance_mm !==
+                                                  undefined && (
+                                                  <div className="info-item">
+                                                    <span className="info-label">
+                                                      Sanding Distance
+                                                    </span>
+                                                    <span className="info-value">
+                                                      {pass.sanding_distance_mm >=
+                                                      1000
+                                                        ? `${(pass.sanding_distance_mm / 1000).toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 2 })} m`
+                                                        : `${pass.sanding_distance_mm.toFixed(1)} mm`}
+                                                    </span>
+                                                  </div>
+                                                )}
+                                              </div>
+                                            </div>
+                                            <div className="info-section">
+                                              <div
+                                                style={{
+                                                  display: 'flex',
+                                                  alignItems: 'center',
+                                                  marginBottom: '12px',
+                                                }}
+                                              >
+                                                <h4 style={{ margin: 0 }}>
+                                                  Build information
+                                                </h4>
+                                              </div>
+
+                                              {pass.build_info.version ||
+                                              pass.build_info.git_revision ||
+                                              pass.build_info.date_compiled ? (
+                                                <div className="info-grid">
+                                                  {/* Version */}
+                                                  {pass.build_info.version && (
+                                                    <div className="info-item">
+                                                      <span className="info-label">
+                                                        Version
+                                                      </span>
+                                                      <span className="info-value">
+                                                        {
+                                                          pass.build_info
+                                                            .version
+                                                        }
+                                                      </span>
+                                                    </div>
+                                                  )}
+
+                                                  {/* Git Revision */}
+                                                  {pass.build_info
+                                                    .git_revision && (
+                                                    <div className="info-item">
+                                                      <span className="info-label">
+                                                        Git revision
+                                                      </span>
+                                                      <span className="info-value">
+                                                        {
+                                                          pass.build_info
+                                                            .git_revision
+                                                        }
+                                                      </span>
+                                                    </div>
+                                                  )}
+
+                                                  {/* Date Compiled */}
+                                                  {pass.build_info
+                                                    .date_compiled && (
+                                                    <div className="info-item">
+                                                      <span className="info-label">
+                                                        Date compiled
+                                                      </span>
+                                                      <span className="info-value">
+                                                        {
+                                                          pass.build_info
+                                                            .date_compiled
+                                                        }
+                                                      </span>
+                                                    </div>
+                                                  )}
+                                                </div>
+                                              ) : (
+                                                <div className="info-notice">
+                                                  Build information not
+                                                  available for this run.
+                                                </div>
+                                              )}
+                                            </div>
+                                            <div className="info-section">
+                                              <div
+                                                style={{
+                                                  display: 'flex',
+                                                  alignItems: 'center',
+                                                  marginBottom: '12px',
+                                                }}
+                                              >
+                                                <h4 style={{ margin: 0 }}>
+                                                  Config information
+                                                </h4>
+                                                {(() => {
+                                                  const flatPasses =
+                                                    Object.values(
+                                                      groupedPasses
+                                                    ).flat()
+                                                  const {
+                                                    prevPass,
+                                                    configChanged,
+                                                  } = getPassConfigComparison(
+                                                    pass,
+                                                    flatPasses,
+                                                    configMetadata
+                                                  )
+
+                                                  // If the previous pass exists but we don't have its metadata yet,
+                                                  // trigger a fetch. The UI will update on the next render cycle.
+                                                  if (
+                                                    prevPass &&
+                                                    !configMetadata.has(
+                                                      prevPass.pass_id
+                                                    ) &&
+                                                    !loadingConfigMetadata.has(
+                                                      prevPass.pass_id
+                                                    )
+                                                  ) {
+                                                    fetchConfigMetadata(
+                                                      pass,
+                                                      prevPass
+                                                    )
+                                                  }
+
+                                                  // Only show the badge if the metadata for both passes has been loaded and they are different.
+                                                  if (configChanged) {
+                                                    return (
+                                                      <div
+                                                        style={{
+                                                          marginLeft: '12px',
+                                                          fontSize: '12px',
+                                                          color: '#4f46e5',
+                                                          backgroundColor:
+                                                            '#eef2ff',
+                                                          padding: '2px 8px',
+                                                          borderRadius:
+                                                            '9999px',
+                                                          fontWeight: 500,
+                                                        }}
+                                                      >
+                                                        Config changed since
+                                                        last run
                                                       </div>
-                                                      
-                                                    </>
-                                                  );
+                                                    )
+                                                  }
+                                                  return null
                                                 })()}
                                               </div>
-                                            ) : null}
-                                          </div>
-                                        </div>
-                                      )}
 
-                                      <div className="passes-container">
-                                        <div className="steps-grid">
-                                          {/* Camera Images */}
-                                          {selectedCamera && (() => {
-                                            const { beforeImage, afterImage } = passImages(pass);
-                                            const passStart = pass.start;
-                                            const passEnd = pass.end;
-
-                                            // If no images at all, show a message
-                                            if (!beforeImage && !afterImage) {
-                                              return (
-                                                <div className="step-card" style={{ order: 0 }}>
-                                                  <div style={{
+                                              {loadingConfigMetadata.has(
+                                                pass.pass_id
+                                              ) ? (
+                                                <div
+                                                  style={{
                                                     display: 'flex',
-                                                    height: '100%',
                                                     alignItems: 'center',
-                                                    justifyContent: 'center',
-                                                    backgroundColor: '#f3f4f6',
-                                                    borderRadius: '4px',
-                                                    padding: '12px',
-                                                    color: '#9ca3af',
-                                                    fontSize: '14px'
-                                                  }}>
-                                                    No images captured during this pass
-                                                  </div>
+                                                    gap: '8px',
+                                                    marginBottom: '12px',
+                                                    color: '#6b7280',
+                                                    fontSize: '14px',
+                                                  }}
+                                                >
+                                                  <div
+                                                    style={{
+                                                      width: '16px',
+                                                      height: '16px',
+                                                      border:
+                                                        '2px solid rgba(59, 130, 246, 0.2)',
+                                                      borderTop:
+                                                        '2px solid #3b82f6',
+                                                      borderRadius: '50%',
+                                                      animation:
+                                                        'spin 1s linear infinite',
+                                                    }}
+                                                  />
+                                                  Loading config info...
                                                 </div>
-                                              );
-                                            }
-
-                                            return (
-                                              <>
-                                                {/* Start Image */}
-                                                {beforeImage && (
-                                                  <div className="step-card" style={{ order: -1 }}>
-                                                    <div className="step-name">Start Image</div>
-                                                    <div className="step-duration">
-                                                      {beforeImage.metadata?.timeRequested?.toDate().toLocaleTimeString()}
-                                                      <span style={{ fontSize: '12px', color: '#6b7280', marginLeft: '8px' }}>
-                                                        ({formatTimeDifference(
-                                                          beforeImage.metadata?.timeRequested?.toDate()?.getTime() || passStart.getTime(),
-                                                          passStart.getTime()
-                                                        )} from start)
-                                                      </span>
-                                                    </div>
-
-                                                    <div
-                                                      className="step-image-container clickable-image"
-                                                      style={{ marginTop: "12px", width: "100%", overflow: "hidden" }}
-                                                      onClick={() => openBeforeAfterModal(beforeImage, afterImage)}
-                                                    >
-                                                      <ImageDisplay binaryData={beforeImage} />
-                                                    </div>
-                                                  </div>
-                                                )}
-
-                                                {/* End Image */}
-                                                {afterImage && afterImage !== beforeImage && (
-                                                  <div className="step-card" style={{ order: 999 }}>
-                                                    <div className="step-name">End Image</div>
-                                                    <div className="step-duration">
-                                                      {afterImage.metadata?.timeRequested?.toDate().toLocaleTimeString()}
-                                                      <span style={{ fontSize: '12px', color: '#6b7280', marginLeft: '8px' }}>
-                                                        ({formatTimeDifference(
-                                                          passEnd.getTime(),
-                                                          afterImage.metadata?.timeRequested?.toDate()?.getTime() || passEnd.getTime()
-                                                        )} before end)
-                                                      </span>
-                                                    </div>
-
-                                                    <div
-                                                      className="step-image-container clickable-image"
-                                                      style={{ marginTop: "12px", width: "100%", overflow: "hidden" }}
-                                                      onClick={() => openBeforeAfterModal(beforeImage, afterImage)}
-                                                    >
-                                                      <ImageDisplay binaryData={afterImage} />
-                                                    </div>
-                                                  </div>
-                                                )}
-                                              </>
-                                            );
-                                          })()}
-
-                                          {/* Regular step cards */}
-                                          {pass.steps.map((step: Step) => {
-                                            const stepVideos = getStepVideos(step, videoFiles);
-
-                                            return (
-                                              <div key={step.name} className="step-card">
-                                                <div className="step-name">{step.name}</div>
-                                                <div className="step-timeline">
-                                                  <div className="step-time">
-                                                    <span className="time-label">Start</span>
-                                                    <span className="time-value">{step.start.toLocaleTimeString()}</span>
-                                                  </div>
-                                                  <div className="timeline-arrow">→</div>
-                                                  <div className="step-time">
-                                                    <span className="time-label">End</span>
-                                                    <span className="time-value">{step.end.toLocaleTimeString()}</span>
-                                                  </div>
+                                              ) : configMetadata.has(
+                                                  pass.pass_id
+                                                ) ? (
+                                                <div
+                                                  className="info-grid"
+                                                  style={{
+                                                    marginBottom: '12px',
+                                                  }}
+                                                >
+                                                  {(() => {
+                                                    const metadata =
+                                                      configMetadata.get(
+                                                        pass.pass_id
+                                                      )!
+                                                    return (
+                                                      <>
+                                                        <div className="info-item">
+                                                          <span className="info-label">
+                                                            Timestamp
+                                                          </span>
+                                                          <span className="info-value">
+                                                            {metadata.configTimestamp.toLocaleString()}
+                                                          </span>
+                                                        </div>
+                                                        <div className="info-item">
+                                                          <button
+                                                            onClick={() =>
+                                                              handleDownloadConfig(
+                                                                pass
+                                                              )
+                                                            }
+                                                            disabled={downloadingConfigs.has(
+                                                              pass.pass_id
+                                                            )}
+                                                            style={{
+                                                              padding:
+                                                                '6px 12px',
+                                                              fontSize: '12px',
+                                                              backgroundColor:
+                                                                downloadingConfigs.has(
+                                                                  pass.pass_id
+                                                                )
+                                                                  ? '#9ca3af'
+                                                                  : '#3b82f6',
+                                                              color: 'white',
+                                                              border: 'none',
+                                                              borderRadius:
+                                                                '4px',
+                                                              cursor:
+                                                                downloadingConfigs.has(
+                                                                  pass.pass_id
+                                                                )
+                                                                  ? 'not-allowed'
+                                                                  : 'pointer',
+                                                              transition:
+                                                                'background-color 0.2s',
+                                                              display: 'flex',
+                                                              alignItems:
+                                                                'center',
+                                                              gap: '6px',
+                                                            }}
+                                                            onMouseEnter={(
+                                                              e
+                                                            ) => {
+                                                              if (
+                                                                !downloadingConfigs.has(
+                                                                  pass.pass_id
+                                                                )
+                                                              ) {
+                                                                e.currentTarget.style.backgroundColor =
+                                                                  '#2563eb'
+                                                              }
+                                                            }}
+                                                            onMouseLeave={(
+                                                              e
+                                                            ) => {
+                                                              if (
+                                                                !downloadingConfigs.has(
+                                                                  pass.pass_id
+                                                                )
+                                                              ) {
+                                                                e.currentTarget.style.backgroundColor =
+                                                                  '#3b82f6'
+                                                              }
+                                                            }}
+                                                          >
+                                                            {downloadingConfigs.has(
+                                                              pass.pass_id
+                                                            ) ? (
+                                                              <>
+                                                                <div
+                                                                  style={{
+                                                                    width:
+                                                                      '12px',
+                                                                    height:
+                                                                      '12px',
+                                                                    border:
+                                                                      '2px solid #ffffff',
+                                                                    borderTop:
+                                                                      '2px solid transparent',
+                                                                    borderRadius:
+                                                                      '50%',
+                                                                    animation:
+                                                                      'spin 1s linear infinite',
+                                                                  }}
+                                                                />
+                                                                Downloading...
+                                                              </>
+                                                            ) : (
+                                                              <>
+                                                                Download config
+                                                              </>
+                                                            )}
+                                                          </button>
+                                                        </div>
+                                                      </>
+                                                    )
+                                                  })()}
                                                 </div>
-                                                <div className="step-duration">{formatDurationToMinutesSeconds(step.start, step.end)}</div>
-
-                                                <StepVideosGrid
-                                                  step={step}
-                                                  stepVideos={stepVideos}
-                                                  videoFiles={videoFiles}
-                                                  fetchTimestamp={fetchTimestamp}
-                                                  videoStoreClient={videoStoreClient}
-                                                  fetchVideos={fetchVideos}
-                                                  machineId={machineId}
-                                                  organizationId={organizationId}
-                                                />
-                                              </div>
-                                            );
-                                          })}
-                                          <RenderIf condition={binaryDataManger.current.searchBinaryDataByFileName(SNAPSHOT_FILE_NAME_PREFIX).length > 0}>
-                                            <StepsVizSnapshotCard
-                                              snapshotFile={
-                                                binaryDataManger.current.searchBinaryDataByFileName(
-                                                  SNAPSHOT_FILE_NAME_PREFIX
-                                                )[0]
-                                              }
-                                            />
-                                          </RenderIf>
-                                          
-                                          
-                                        </div>
-
-                                        {/* Diagnosis and Notes Section - shows for all passes, diagnosis fields only for failed */}
-                                        <div style={{ margin: '1rem 12px 24px 12px' }}>
-                                          <div className="step-card" style={{ minWidth: '50%', backgroundColor: 'transparent' }}>
-                                            <div className="step-name" style={{ textAlign: 'left' }}>
-                                              {!pass.success ? 'Diagnosis' : 'Notes'}
+                                              ) : null}
                                             </div>
+                                          </div>
+                                        )}
 
-                                            {fetchingNotes ? (
-                                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '80px' }}>
-                                                <span style={{
-                                                  display: 'inline-block',
-                                                  width: '20px',
-                                                  height: '20px',
-                                                  border: '2px solid rgba(59, 130, 246, 0.2)',
-                                                  borderTopColor: '#3b82f6',
-                                                  borderRadius: '50%',
-                                                  animation: 'spin 1s linear infinite'
-                                                }}></span>
-                                                <span style={{ marginLeft: '10px', color: '#6b7280', fontSize: '14px' }}>Loading...</span>
-                                              </div>
-                                            ) : (
-                                              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                                                {/* Diagnosis dropdowns - only for failed passes, displayed in a row */}
-                                                {!pass.success && (
-                                                  <div style={{ display: 'flex', gap: '16px' }}>
-                                                    <div style={{ flex: 1 }}>
-                                                      <label htmlFor={`symptom-${passId}`} style={{ display: 'block', fontSize: '13px', fontWeight: 500, color: '#374151', marginBottom: '6px' }}>
-                                                        Symptom
-                                                      </label>
-                                                      <select
-                                                        id={`symptom-${passId}`}
-                                                        value={diagnosisInputs[passId]?.symptom || ''}
-                                                        onChange={(e) => handleDiagnosisChange(passId, 'symptom', e.target.value)}
+                                        <div className="passes-container">
+                                          <div className="steps-grid">
+                                            {/* Camera Images */}
+                                            {selectedCamera &&
+                                              (() => {
+                                                const {
+                                                  beforeImage,
+                                                  afterImage,
+                                                } = passImages(pass)
+                                                const passStart = pass.start
+                                                const passEnd = pass.end
+
+                                                // If no images at all, show a message
+                                                if (
+                                                  !beforeImage &&
+                                                  !afterImage
+                                                ) {
+                                                  return (
+                                                    <div
+                                                      className="step-card"
+                                                      style={{ order: 0 }}
+                                                    >
+                                                      <div
                                                         style={{
-                                                          width: '100%',
-                                                          padding: '10px 12px',
+                                                          display: 'flex',
+                                                          height: '100%',
+                                                          alignItems: 'center',
+                                                          justifyContent:
+                                                            'center',
+                                                          backgroundColor:
+                                                            '#f3f4f6',
+                                                          borderRadius: '4px',
+                                                          padding: '12px',
+                                                          color: '#9ca3af',
                                                           fontSize: '14px',
-                                                          border: '1px solid #d1d5db',
-                                                          borderRadius: '6px',
-                                                          backgroundColor: '#ffffff',
-                                                          cursor: 'pointer',
-                                                          outline: 'none'
                                                         }}
                                                       >
-                                                        <option value="">Select symptom...</option>
-                                                        {SYMPTOM_OPTIONS.map(option => (
-                                                          <option key={option} value={option}>{option}</option>
-                                                        ))}
-                                                      </select>
+                                                        No images captured
+                                                        during this pass
+                                                      </div>
                                                     </div>
+                                                  )
+                                                }
 
-                                                    <div style={{ flex: 1 }}>
-                                                      <label htmlFor={`cause-${passId}`} style={{ display: 'block', fontSize: '13px', fontWeight: 500, color: '#374151', marginBottom: '6px' }}>
-                                                        Cause
-                                                      </label>
-                                                      <select
-                                                        id={`cause-${passId}`}
-                                                        value={diagnosisInputs[passId]?.cause || ''}
-                                                        onChange={(e) => handleDiagnosisChange(passId, 'cause', e.target.value)}
-                                                        style={{
-                                                          width: '100%',
-                                                          padding: '10px 12px',
-                                                          fontSize: '14px',
-                                                          border: '1px solid #d1d5db',
-                                                          borderRadius: '6px',
-                                                          backgroundColor: '#ffffff',
-                                                          cursor: 'pointer',
-                                                          outline: 'none'
-                                                        }}
+                                                return (
+                                                  <>
+                                                    {/* Start Image */}
+                                                    {beforeImage && (
+                                                      <div
+                                                        className="step-card"
+                                                        style={{ order: -1 }}
                                                       >
-                                                        <option value="">Select cause...</option>
-                                                        {CAUSE_OPTIONS.map(option => (
-                                                          <option key={option} value={option}>{option}</option>
-                                                        ))}
-                                                      </select>
-                                                    </div>
-                                                  </div>
-                                                )}
+                                                        <div className="step-name">
+                                                          Start Image
+                                                        </div>
+                                                        <div className="step-duration">
+                                                          {beforeImage.metadata?.timeRequested
+                                                            ?.toDate()
+                                                            .toLocaleTimeString()}
+                                                          <span
+                                                            style={{
+                                                              fontSize: '12px',
+                                                              color: '#6b7280',
+                                                              marginLeft: '8px',
+                                                            }}
+                                                          >
+                                                            (
+                                                            {formatTimeDifference(
+                                                              beforeImage.metadata?.timeRequested
+                                                                ?.toDate()
+                                                                ?.getTime() ||
+                                                                passStart.getTime(),
+                                                              passStart.getTime()
+                                                            )}{' '}
+                                                            from start)
+                                                          </span>
+                                                        </div>
 
-                                                {/* JIRA Ticket URL - only for failed passes when cause is selected */}
-                                                {!pass.success && diagnosisInputs[passId]?.cause && (
-                                                  <div>
-                                                    <label htmlFor={`jira-${passId}`} style={{ display: 'block', fontSize: '13px', fontWeight: 500, color: '#374151', marginBottom: '6px' }}>
-                                                      JIRA Ticket (e.g. https://viam.atlassian.net/browse/RSDK-1234)
-                                                    </label>
-                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                                      <input
-                                                        id={`jira-${passId}`}
-                                                        type="url"
-                                                        value={diagnosisInputs[passId]?.jiraTicketUrl || ''}
-                                                        onChange={(e) => handleDiagnosisChange(passId, 'jiraTicketUrl', e.target.value)}
-                                                        placeholder="https://viam.atlassian.net/browse/RSDK-..."
-                                                        style={{
-                                                          flex: 1,
-                                                          padding: '10px 12px',
-                                                          fontSize: '14px',
-                                                          border: '1px solid #d1d5db',
-                                                          borderRadius: '6px',
-                                                          backgroundColor: '#ffffff',
-                                                          outline: 'none'
-                                                        }}
-                                                      />
-                                                      {diagnosisInputs[passId]?.jiraTicketUrl && !jiraValidationErrors[passId] && (
-                                                        <a
-                                                          href={diagnosisInputs[passId].jiraTicketUrl}
-                                                          target="_blank"
-                                                          rel="noopener noreferrer"
+                                                        <div
+                                                          className="step-image-container clickable-image"
                                                           style={{
-                                                            padding: '10px 12px',
-                                                            fontSize: '14px',
-                                                            color: '#3b82f6',
-                                                            textDecoration: 'none',
-                                                            border: '1px solid #d1d5db',
-                                                            borderRadius: '6px',
-                                                            backgroundColor: '#ffffff',
-                                                            display: 'flex',
-                                                            alignItems: 'center'
+                                                            marginTop: '12px',
+                                                            width: '100%',
+                                                            overflow: 'hidden',
                                                           }}
-                                                          title="Open JIRA ticket"
+                                                          onClick={() =>
+                                                            openBeforeAfterModal(
+                                                              beforeImage,
+                                                              afterImage
+                                                            )
+                                                          }
                                                         >
-                                                          🔗
-                                                        </a>
-                                                      )}
-                                                    </div>
-                                                    {jiraValidationErrors[passId] && (
-                                                      <div style={{ 
-                                                        fontSize: '12px', 
-                                                        color: '#dc2626', 
-                                                        marginTop: '4px' 
-                                                      }}>
-                                                        {jiraValidationErrors[passId]}
+                                                          <ImageDisplay
+                                                            binaryData={
+                                                              beforeImage
+                                                            }
+                                                          />
+                                                        </div>
                                                       </div>
                                                     )}
-                                                  </div>
-                                                )}
 
-                                                {/* Notes textarea - always shown */}
-                                                <div>
-                                                  {/* Only show label when there are diagnosis fields above */}
-                                                  {!pass.success && (
-                                                    <label htmlFor={`pass-notes-${passId}`} style={{ display: 'block', fontSize: '13px', fontWeight: 500, color: '#374151', marginBottom: '6px' }}>
-                                                      Notes
-                                                    </label>
-                                                  )}
-                                                  <textarea
-                                                    id={`pass-notes-${passId}`}
-                                                    value={noteInputs[passId] || ''}
-                                                    onChange={(e) => handleNoteChange(passId, e.target.value)}
-                                                    placeholder="Add a note for this pass..."
-                                                    style={{
-                                                      width: '100%',
-                                                      minHeight: '72px',
-                                                      padding: '10px 12px',
-                                                      fontSize: '14px',
-                                                      border: '1px solid #d1d5db',
-                                                      borderRadius: '6px',
-                                                      resize: 'vertical',
-                                                      fontFamily: 'inherit',
-                                                      backgroundColor: '#ffffff',
-                                                      boxSizing: 'border-box',
-                                                      outline: 'none',
-                                                      lineHeight: '1.5'
-                                                    }}
-                                                    aria-label={`Notes for pass ${passId}`}
+                                                    {/* End Image */}
+                                                    {afterImage &&
+                                                      afterImage !==
+                                                        beforeImage && (
+                                                        <div
+                                                          className="step-card"
+                                                          style={{ order: 999 }}
+                                                        >
+                                                          <div className="step-name">
+                                                            End Image
+                                                          </div>
+                                                          <div className="step-duration">
+                                                            {afterImage.metadata?.timeRequested
+                                                              ?.toDate()
+                                                              .toLocaleTimeString()}
+                                                            <span
+                                                              style={{
+                                                                fontSize:
+                                                                  '12px',
+                                                                color:
+                                                                  '#6b7280',
+                                                                marginLeft:
+                                                                  '8px',
+                                                              }}
+                                                            >
+                                                              (
+                                                              {formatTimeDifference(
+                                                                passEnd.getTime(),
+                                                                afterImage.metadata?.timeRequested
+                                                                  ?.toDate()
+                                                                  ?.getTime() ||
+                                                                  passEnd.getTime()
+                                                              )}{' '}
+                                                              before end)
+                                                            </span>
+                                                          </div>
+
+                                                          <div
+                                                            className="step-image-container clickable-image"
+                                                            style={{
+                                                              marginTop: '12px',
+                                                              width: '100%',
+                                                              overflow:
+                                                                'hidden',
+                                                            }}
+                                                            onClick={() =>
+                                                              openBeforeAfterModal(
+                                                                beforeImage,
+                                                                afterImage
+                                                              )
+                                                            }
+                                                          >
+                                                            <ImageDisplay
+                                                              binaryData={
+                                                                afterImage
+                                                              }
+                                                            />
+                                                          </div>
+                                                        </div>
+                                                      )}
+                                                  </>
+                                                )
+                                              })()}
+
+                                            {/* Regular step cards */}
+                                            {pass.steps.map((step: Step) => {
+                                              const stepVideos = getStepVideos(
+                                                step,
+                                                videoFiles
+                                              )
+
+                                              return (
+                                                <div
+                                                  key={step.name}
+                                                  className="step-card"
+                                                >
+                                                  <div className="step-name">
+                                                    {step.name}
+                                                  </div>
+                                                  <div className="step-timeline">
+                                                    <div className="step-time">
+                                                      <span className="time-label">
+                                                        Start
+                                                      </span>
+                                                      <span className="time-value">
+                                                        {step.start.toLocaleTimeString()}
+                                                      </span>
+                                                    </div>
+                                                    <div className="timeline-arrow">
+                                                      →
+                                                    </div>
+                                                    <div className="step-time">
+                                                      <span className="time-label">
+                                                        End
+                                                      </span>
+                                                      <span className="time-value">
+                                                        {step.end.toLocaleTimeString()}
+                                                      </span>
+                                                    </div>
+                                                  </div>
+                                                  <div className="step-duration">
+                                                    {formatDurationToMinutesSeconds(
+                                                      step.start,
+                                                      step.end
+                                                    )}
+                                                  </div>
+
+                                                  <StepVideosGrid
+                                                    step={step}
+                                                    stepVideos={stepVideos}
+                                                    videoFiles={videoFiles}
+                                                    fetchTimestamp={
+                                                      fetchTimestamp
+                                                    }
+                                                    videoStoreClient={
+                                                      videoStoreClient
+                                                    }
+                                                    fetchVideos={fetchVideos}
+                                                    machineId={machineId}
+                                                    organizationId={
+                                                      organizationId
+                                                    }
                                                   />
                                                 </div>
+                                              )
+                                            })}
+                                            <RenderIf
+                                              condition={
+                                                binaryDataManger.current.searchBinaryDataByFileName(
+                                                  SNAPSHOT_FILE_NAME_PREFIX
+                                                ).length > 0
+                                              }
+                                            >
+                                              <StepsVizSnapshotCard
+                                                snapshotFile={
+                                                  binaryDataManger.current.searchBinaryDataByFileName(
+                                                    SNAPSHOT_FILE_NAME_PREFIX
+                                                  )[0]
+                                                }
+                                              />
+                                            </RenderIf>
+                                          </div>
 
-                                                {/* Save button - full width at bottom */}
-                                                <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-                                                  <button
-                                                    type="button"
-                                                    onClick={() => savePassMetadata(passId, !pass.success)}
-                                                    disabled={(() => {
-                                                      if (savingMetadata.has(passId) || metadataSuccess.has(passId)) return true;
-                                                      // Disable if there are JIRA validation errors
-                                                      if (jiraValidationErrors[passId]) return true;
-                                                      const noteText = noteInputs[passId] || '';
-                                                      const existingNoteText = passNotesData.length > 0 ? passNotesData[0].note_text : '';
-                                                      const noteChanged = noteText.trim() !== existingNoteText.trim();
-                                                      if (!pass.success) {
-                                                        const diagnosisChanged = 
-                                                          (passDiagnoses.get(passId)?.symptom || '') !== (diagnosisInputs[passId]?.symptom || '') ||
-                                                          (passDiagnoses.get(passId)?.cause || '') !== (diagnosisInputs[passId]?.cause || '') ||
-                                                          (passDiagnoses.get(passId)?.jira_ticket_url || '') !== (diagnosisInputs[passId]?.jiraTicketUrl || '');
-                                                        return !noteChanged && !diagnosisChanged;
-                                                      }
-                                                      return !noteChanged;
-                                                    })()}
+                                          {/* Diagnosis and Notes Section - shows for all passes, diagnosis fields only for failed */}
+                                          <div
+                                            style={{
+                                              margin: '1rem 12px 24px 12px',
+                                            }}
+                                          >
+                                            <div
+                                              className="step-card"
+                                              style={{
+                                                minWidth: '50%',
+                                                backgroundColor: 'transparent',
+                                              }}
+                                            >
+                                              <div
+                                                className="step-name"
+                                                style={{ textAlign: 'left' }}
+                                              >
+                                                {!pass.success
+                                                  ? 'Diagnosis'
+                                                  : 'Notes'}
+                                              </div>
+
+                                              {fetchingNotes ? (
+                                                <div
+                                                  style={{
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center',
+                                                    minHeight: '80px',
+                                                  }}
+                                                >
+                                                  <span
                                                     style={{
-                                                      padding: '6px 8px',
-                                                      fontSize: '12px',
-                                                      color: 'white',
-                                                      backgroundColor: metadataSuccess.has(passId) ? '#10b981' : (() => {
-                                                        if (savingMetadata.has(passId)) return '#9ca3af';
-                                                        const noteText = noteInputs[passId] || '';
-                                                        const existingNoteText = passNotesData.length > 0 ? passNotesData[0].note_text : '';
-                                                        const noteChanged = noteText.trim() !== existingNoteText.trim();
-                                                        if (!pass.success) {
-                                                          const diagnosisChanged = 
-                                                            (passDiagnoses.get(passId)?.symptom || '') !== (diagnosisInputs[passId]?.symptom || '') ||
-                                                            (passDiagnoses.get(passId)?.cause || '') !== (diagnosisInputs[passId]?.cause || '') ||
-                                                            (passDiagnoses.get(passId)?.jira_ticket_url || '') !== (diagnosisInputs[passId]?.jiraTicketUrl || '');
-                                                          return noteChanged || diagnosisChanged ? '#3b82f6' : '#9ca3af';
-                                                        }
-                                                        return noteChanged ? '#3b82f6' : '#9ca3af';
-                                                      })(),
-                                                      border: 'none',
-                                                      borderRadius: '4px',
-                                                      cursor: (() => {
-                                                        if (savingMetadata.has(passId) || metadataSuccess.has(passId)) return 'not-allowed';
-                                                        const noteText = noteInputs[passId] || '';
-                                                        const existingNoteText = passNotesData.length > 0 ? passNotesData[0].note_text : '';
-                                                        const noteChanged = noteText.trim() !== existingNoteText.trim();
-                                                        if (!pass.success) {
-                                                          const diagnosisChanged = 
-                                                            (passDiagnoses.get(passId)?.symptom || '') !== (diagnosisInputs[passId]?.symptom || '') ||
-                                                            (passDiagnoses.get(passId)?.cause || '') !== (diagnosisInputs[passId]?.cause || '') ||
-                                                            (passDiagnoses.get(passId)?.jira_ticket_url || '') !== (diagnosisInputs[passId]?.jiraTicketUrl || '');
-                                                          return noteChanged || diagnosisChanged ? 'pointer' : 'not-allowed';
-                                                        }
-                                                        return noteChanged ? 'pointer' : 'not-allowed';
-                                                      })(),
-                                                      transition: 'background-color 0.2s',
-                                                      display: 'flex',
-                                                      alignItems: 'center',
-                                                      gap: '6px'
+                                                      display: 'inline-block',
+                                                      width: '20px',
+                                                      height: '20px',
+                                                      border:
+                                                        '2px solid rgba(59, 130, 246, 0.2)',
+                                                      borderTopColor: '#3b82f6',
+                                                      borderRadius: '50%',
+                                                      animation:
+                                                        'spin 1s linear infinite',
                                                     }}
-                                                    onMouseEnter={(e) => {
-                                                      const noteText = noteInputs[passId] || '';
-                                                      const existingNoteText = passNotesData.length > 0 ? passNotesData[0].note_text : '';
-                                                      const noteChanged = noteText.trim() !== existingNoteText.trim();
-                                                      let hasChanges = noteChanged;
-                                                      if (!pass.success) {
-                                                        const diagnosisChanged = 
-                                                          (passDiagnoses.get(passId)?.symptom || '') !== (diagnosisInputs[passId]?.symptom || '') ||
-                                                          (passDiagnoses.get(passId)?.cause || '') !== (diagnosisInputs[passId]?.cause || '') ||
-                                                          (passDiagnoses.get(passId)?.jira_ticket_url || '') !== (diagnosisInputs[passId]?.jiraTicketUrl || '');
-                                                        hasChanges = noteChanged || diagnosisChanged;
-                                                      }
-                                                      if (hasChanges && !savingMetadata.has(passId) && !metadataSuccess.has(passId)) {
-                                                        e.currentTarget.style.backgroundColor = '#2563eb';
-                                                      }
-                                                    }}
-                                                    onMouseLeave={(e) => {
-                                                      const noteText = noteInputs[passId] || '';
-                                                      const existingNoteText = passNotesData.length > 0 ? passNotesData[0].note_text : '';
-                                                      const noteChanged = noteText.trim() !== existingNoteText.trim();
-                                                      let hasChanges = noteChanged;
-                                                      if (!pass.success) {
-                                                        const diagnosisChanged = 
-                                                          (passDiagnoses.get(passId)?.symptom || '') !== (diagnosisInputs[passId]?.symptom || '') ||
-                                                          (passDiagnoses.get(passId)?.cause || '') !== (diagnosisInputs[passId]?.cause || '') ||
-                                                          (passDiagnoses.get(passId)?.jira_ticket_url || '') !== (diagnosisInputs[passId]?.jiraTicketUrl || '');
-                                                        hasChanges = noteChanged || diagnosisChanged;
-                                                      }
-                                                      if (hasChanges && !savingMetadata.has(passId) && !metadataSuccess.has(passId)) {
-                                                        e.currentTarget.style.backgroundColor = '#3b82f6';
-                                                      }
+                                                  ></span>
+                                                  <span
+                                                    style={{
+                                                      marginLeft: '10px',
+                                                      color: '#6b7280',
+                                                      fontSize: '14px',
                                                     }}
                                                   >
-                                                    {savingMetadata.has(passId) ? (
-                                                      <>
+                                                    Loading...
+                                                  </span>
+                                                </div>
+                                              ) : (
+                                                <div
+                                                  style={{
+                                                    display: 'flex',
+                                                    flexDirection: 'column',
+                                                    gap: '12px',
+                                                  }}
+                                                >
+                                                  {/* Diagnosis dropdowns - only for failed passes, displayed in a row */}
+                                                  {!pass.success && (
+                                                    <div
+                                                      style={{
+                                                        display: 'flex',
+                                                        gap: '16px',
+                                                      }}
+                                                    >
+                                                      <div style={{ flex: 1 }}>
+                                                        <label
+                                                          htmlFor={`symptom-${passId}`}
+                                                          style={{
+                                                            display: 'block',
+                                                            fontSize: '13px',
+                                                            fontWeight: 500,
+                                                            color: '#374151',
+                                                            marginBottom: '6px',
+                                                          }}
+                                                        >
+                                                          Symptom
+                                                        </label>
+                                                        <select
+                                                          id={`symptom-${passId}`}
+                                                          value={
+                                                            diagnosisInputs[
+                                                              passId
+                                                            ]?.symptom || ''
+                                                          }
+                                                          onChange={(e) =>
+                                                            handleDiagnosisChange(
+                                                              passId,
+                                                              'symptom',
+                                                              e.target.value
+                                                            )
+                                                          }
+                                                          style={{
+                                                            width: '100%',
+                                                            padding:
+                                                              '10px 12px',
+                                                            fontSize: '14px',
+                                                            border:
+                                                              '1px solid #d1d5db',
+                                                            borderRadius: '6px',
+                                                            backgroundColor:
+                                                              '#ffffff',
+                                                            cursor: 'pointer',
+                                                            outline: 'none',
+                                                          }}
+                                                        >
+                                                          <option value="">
+                                                            Select symptom...
+                                                          </option>
+                                                          {SYMPTOM_OPTIONS.map(
+                                                            (option) => (
+                                                              <option
+                                                                key={option}
+                                                                value={option}
+                                                              >
+                                                                {option}
+                                                              </option>
+                                                            )
+                                                          )}
+                                                        </select>
+                                                      </div>
+
+                                                      <div style={{ flex: 1 }}>
+                                                        <label
+                                                          htmlFor={`cause-${passId}`}
+                                                          style={{
+                                                            display: 'block',
+                                                            fontSize: '13px',
+                                                            fontWeight: 500,
+                                                            color: '#374151',
+                                                            marginBottom: '6px',
+                                                          }}
+                                                        >
+                                                          Cause
+                                                        </label>
+                                                        <select
+                                                          id={`cause-${passId}`}
+                                                          value={
+                                                            diagnosisInputs[
+                                                              passId
+                                                            ]?.cause || ''
+                                                          }
+                                                          onChange={(e) =>
+                                                            handleDiagnosisChange(
+                                                              passId,
+                                                              'cause',
+                                                              e.target.value
+                                                            )
+                                                          }
+                                                          style={{
+                                                            width: '100%',
+                                                            padding:
+                                                              '10px 12px',
+                                                            fontSize: '14px',
+                                                            border:
+                                                              '1px solid #d1d5db',
+                                                            borderRadius: '6px',
+                                                            backgroundColor:
+                                                              '#ffffff',
+                                                            cursor: 'pointer',
+                                                            outline: 'none',
+                                                          }}
+                                                        >
+                                                          <option value="">
+                                                            Select cause...
+                                                          </option>
+                                                          {CAUSE_OPTIONS.map(
+                                                            (option) => (
+                                                              <option
+                                                                key={option}
+                                                                value={option}
+                                                              >
+                                                                {option}
+                                                              </option>
+                                                            )
+                                                          )}
+                                                        </select>
+                                                      </div>
+                                                    </div>
+                                                  )}
+
+                                                  {/* JIRA Ticket URL - only for failed passes when cause is selected */}
+                                                  {!pass.success &&
+                                                    diagnosisInputs[passId]
+                                                      ?.cause && (
+                                                      <div>
+                                                        <label
+                                                          htmlFor={`jira-${passId}`}
+                                                          style={{
+                                                            display: 'block',
+                                                            fontSize: '13px',
+                                                            fontWeight: 500,
+                                                            color: '#374151',
+                                                            marginBottom: '6px',
+                                                          }}
+                                                        >
+                                                          JIRA Ticket (e.g.
+                                                          https://viam.atlassian.net/browse/RSDK-1234)
+                                                        </label>
                                                         <div
                                                           style={{
-                                                            width: '12px',
-                                                            height: '12px',
-                                                            border: '2px solid #ffffff',
-                                                            borderTop: '2px solid transparent',
-                                                            borderRadius: '50%',
-                                                            animation: 'spin 1s linear infinite'
+                                                            display: 'flex',
+                                                            alignItems:
+                                                              'center',
+                                                            gap: '8px',
                                                           }}
-                                                        />
-                                                        Saving...
-                                                      </>
-                                                    ) : metadataSuccess.has(passId) ? '✓ Saved' : 'Save'}
-                                                  </button>
-                                                </div>
-                                              </div>
-                                            )}
-                                          </div>
-                                        </div>
+                                                        >
+                                                          <input
+                                                            id={`jira-${passId}`}
+                                                            type="url"
+                                                            value={
+                                                              diagnosisInputs[
+                                                                passId
+                                                              ]
+                                                                ?.jiraTicketUrl ||
+                                                              ''
+                                                            }
+                                                            onChange={(e) =>
+                                                              handleDiagnosisChange(
+                                                                passId,
+                                                                'jiraTicketUrl',
+                                                                e.target.value
+                                                              )
+                                                            }
+                                                            placeholder="https://viam.atlassian.net/browse/RSDK-..."
+                                                            style={{
+                                                              flex: 1,
+                                                              padding:
+                                                                '10px 12px',
+                                                              fontSize: '14px',
+                                                              border:
+                                                                '1px solid #d1d5db',
+                                                              borderRadius:
+                                                                '6px',
+                                                              backgroundColor:
+                                                                '#ffffff',
+                                                              outline: 'none',
+                                                            }}
+                                                          />
+                                                          {diagnosisInputs[
+                                                            passId
+                                                          ]?.jiraTicketUrl &&
+                                                            !jiraValidationErrors[
+                                                              passId
+                                                            ] && (
+                                                              <a
+                                                                href={
+                                                                  diagnosisInputs[
+                                                                    passId
+                                                                  ]
+                                                                    .jiraTicketUrl
+                                                                }
+                                                                target="_blank"
+                                                                rel="noopener noreferrer"
+                                                                style={{
+                                                                  padding:
+                                                                    '10px 12px',
+                                                                  fontSize:
+                                                                    '14px',
+                                                                  color:
+                                                                    '#3b82f6',
+                                                                  textDecoration:
+                                                                    'none',
+                                                                  border:
+                                                                    '1px solid #d1d5db',
+                                                                  borderRadius:
+                                                                    '6px',
+                                                                  backgroundColor:
+                                                                    '#ffffff',
+                                                                  display:
+                                                                    'flex',
+                                                                  alignItems:
+                                                                    'center',
+                                                                }}
+                                                                title="Open JIRA ticket"
+                                                              >
+                                                                🔗
+                                                              </a>
+                                                            )}
+                                                        </div>
+                                                        {jiraValidationErrors[
+                                                          passId
+                                                        ] && (
+                                                          <div
+                                                            style={{
+                                                              fontSize: '12px',
+                                                              color: '#dc2626',
+                                                              marginTop: '4px',
+                                                            }}
+                                                          >
+                                                            {
+                                                              jiraValidationErrors[
+                                                                passId
+                                                              ]
+                                                            }
+                                                          </div>
+                                                        )}
+                                                      </div>
+                                                    )}
 
-                                        {/* Parent container for Files and Notes columns */}
-                                        <div style={{ display: 'flex', margin: '0 12px' }}>
-                                          {/* Column 1: Files captured during this pass */}
-                                          <div style={{ flex: '2 1 0%', minWidth: 0 }}>
-                                            <PassFiles
-                                              pass={pass}
-                                              binaryDataManager={binaryDataManger.current!}
-                                              viamClient={viamClient}
-                                              fetchTimestamp={fetchTimestamp}
-                                              expandedFiles={expandedFiles}
-                                              toggleFilesExpansion={toggleFilesExpansion}
-                                              fileSearchInputs={fileSearchInputs}
-                                              handleFileSearchChange={handleFileSearchChange}
-                                              debouncedFileSearchInputs={debouncedFileSearchInputs}
-                                              partId={partId}
-                                            />
+                                                  {/* Notes textarea - always shown */}
+                                                  <div>
+                                                    {/* Only show label when there are diagnosis fields above */}
+                                                    {!pass.success && (
+                                                      <label
+                                                        htmlFor={`pass-notes-${passId}`}
+                                                        style={{
+                                                          display: 'block',
+                                                          fontSize: '13px',
+                                                          fontWeight: 500,
+                                                          color: '#374151',
+                                                          marginBottom: '6px',
+                                                        }}
+                                                      >
+                                                        Notes
+                                                      </label>
+                                                    )}
+                                                    <textarea
+                                                      id={`pass-notes-${passId}`}
+                                                      value={
+                                                        noteInputs[passId] || ''
+                                                      }
+                                                      onChange={(e) =>
+                                                        handleNoteChange(
+                                                          passId,
+                                                          e.target.value
+                                                        )
+                                                      }
+                                                      placeholder="Add a note for this pass..."
+                                                      style={{
+                                                        width: '100%',
+                                                        minHeight: '72px',
+                                                        padding: '10px 12px',
+                                                        fontSize: '14px',
+                                                        border:
+                                                          '1px solid #d1d5db',
+                                                        borderRadius: '6px',
+                                                        resize: 'vertical',
+                                                        fontFamily: 'inherit',
+                                                        backgroundColor:
+                                                          '#ffffff',
+                                                        boxSizing: 'border-box',
+                                                        outline: 'none',
+                                                        lineHeight: '1.5',
+                                                      }}
+                                                      aria-label={`Notes for pass ${passId}`}
+                                                    />
+                                                  </div>
+
+                                                  {/* Save button - full width at bottom */}
+                                                  <div
+                                                    style={{
+                                                      display: 'flex',
+                                                      justifyContent:
+                                                        'flex-end',
+                                                    }}
+                                                  >
+                                                    <button
+                                                      type="button"
+                                                      onClick={() =>
+                                                        savePassMetadata(
+                                                          passId,
+                                                          !pass.success
+                                                        )
+                                                      }
+                                                      disabled={(() => {
+                                                        if (
+                                                          savingMetadata.has(
+                                                            passId
+                                                          ) ||
+                                                          metadataSuccess.has(
+                                                            passId
+                                                          )
+                                                        )
+                                                          return true
+                                                        // Disable if there are JIRA validation errors
+                                                        if (
+                                                          jiraValidationErrors[
+                                                            passId
+                                                          ]
+                                                        )
+                                                          return true
+                                                        const noteText =
+                                                          noteInputs[passId] ||
+                                                          ''
+                                                        const existingNoteText =
+                                                          passNotesData.length >
+                                                          0
+                                                            ? passNotesData[0]
+                                                                .note_text
+                                                            : ''
+                                                        const noteChanged =
+                                                          noteText.trim() !==
+                                                          existingNoteText.trim()
+                                                        if (!pass.success) {
+                                                          const diagnosisChanged =
+                                                            (passDiagnoses.get(
+                                                              passId
+                                                            )?.symptom ||
+                                                              '') !==
+                                                              (diagnosisInputs[
+                                                                passId
+                                                              ]?.symptom ||
+                                                                '') ||
+                                                            (passDiagnoses.get(
+                                                              passId
+                                                            )?.cause || '') !==
+                                                              (diagnosisInputs[
+                                                                passId
+                                                              ]?.cause || '') ||
+                                                            (passDiagnoses.get(
+                                                              passId
+                                                            )
+                                                              ?.jira_ticket_url ||
+                                                              '') !==
+                                                              (diagnosisInputs[
+                                                                passId
+                                                              ]
+                                                                ?.jiraTicketUrl ||
+                                                                '')
+                                                          return (
+                                                            !noteChanged &&
+                                                            !diagnosisChanged
+                                                          )
+                                                        }
+                                                        return !noteChanged
+                                                      })()}
+                                                      style={{
+                                                        padding: '6px 8px',
+                                                        fontSize: '12px',
+                                                        color: 'white',
+                                                        backgroundColor:
+                                                          metadataSuccess.has(
+                                                            passId
+                                                          )
+                                                            ? '#10b981'
+                                                            : (() => {
+                                                                if (
+                                                                  savingMetadata.has(
+                                                                    passId
+                                                                  )
+                                                                )
+                                                                  return '#9ca3af'
+                                                                const noteText =
+                                                                  noteInputs[
+                                                                    passId
+                                                                  ] || ''
+                                                                const existingNoteText =
+                                                                  passNotesData.length >
+                                                                  0
+                                                                    ? passNotesData[0]
+                                                                        .note_text
+                                                                    : ''
+                                                                const noteChanged =
+                                                                  noteText.trim() !==
+                                                                  existingNoteText.trim()
+                                                                if (
+                                                                  !pass.success
+                                                                ) {
+                                                                  const diagnosisChanged =
+                                                                    (passDiagnoses.get(
+                                                                      passId
+                                                                    )
+                                                                      ?.symptom ||
+                                                                      '') !==
+                                                                      (diagnosisInputs[
+                                                                        passId
+                                                                      ]
+                                                                        ?.symptom ||
+                                                                        '') ||
+                                                                    (passDiagnoses.get(
+                                                                      passId
+                                                                    )?.cause ||
+                                                                      '') !==
+                                                                      (diagnosisInputs[
+                                                                        passId
+                                                                      ]
+                                                                        ?.cause ||
+                                                                        '') ||
+                                                                    (passDiagnoses.get(
+                                                                      passId
+                                                                    )
+                                                                      ?.jira_ticket_url ||
+                                                                      '') !==
+                                                                      (diagnosisInputs[
+                                                                        passId
+                                                                      ]
+                                                                        ?.jiraTicketUrl ||
+                                                                        '')
+                                                                  return noteChanged ||
+                                                                    diagnosisChanged
+                                                                    ? '#3b82f6'
+                                                                    : '#9ca3af'
+                                                                }
+                                                                return noteChanged
+                                                                  ? '#3b82f6'
+                                                                  : '#9ca3af'
+                                                              })(),
+                                                        border: 'none',
+                                                        borderRadius: '4px',
+                                                        cursor: (() => {
+                                                          if (
+                                                            savingMetadata.has(
+                                                              passId
+                                                            ) ||
+                                                            metadataSuccess.has(
+                                                              passId
+                                                            )
+                                                          )
+                                                            return 'not-allowed'
+                                                          const noteText =
+                                                            noteInputs[
+                                                              passId
+                                                            ] || ''
+                                                          const existingNoteText =
+                                                            passNotesData.length >
+                                                            0
+                                                              ? passNotesData[0]
+                                                                  .note_text
+                                                              : ''
+                                                          const noteChanged =
+                                                            noteText.trim() !==
+                                                            existingNoteText.trim()
+                                                          if (!pass.success) {
+                                                            const diagnosisChanged =
+                                                              (passDiagnoses.get(
+                                                                passId
+                                                              )?.symptom ||
+                                                                '') !==
+                                                                (diagnosisInputs[
+                                                                  passId
+                                                                ]?.symptom ||
+                                                                  '') ||
+                                                              (passDiagnoses.get(
+                                                                passId
+                                                              )?.cause ||
+                                                                '') !==
+                                                                (diagnosisInputs[
+                                                                  passId
+                                                                ]?.cause ||
+                                                                  '') ||
+                                                              (passDiagnoses.get(
+                                                                passId
+                                                              )
+                                                                ?.jira_ticket_url ||
+                                                                '') !==
+                                                                (diagnosisInputs[
+                                                                  passId
+                                                                ]
+                                                                  ?.jiraTicketUrl ||
+                                                                  '')
+                                                            return noteChanged ||
+                                                              diagnosisChanged
+                                                              ? 'pointer'
+                                                              : 'not-allowed'
+                                                          }
+                                                          return noteChanged
+                                                            ? 'pointer'
+                                                            : 'not-allowed'
+                                                        })(),
+                                                        transition:
+                                                          'background-color 0.2s',
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        gap: '6px',
+                                                      }}
+                                                      onMouseEnter={(e) => {
+                                                        const noteText =
+                                                          noteInputs[passId] ||
+                                                          ''
+                                                        const existingNoteText =
+                                                          passNotesData.length >
+                                                          0
+                                                            ? passNotesData[0]
+                                                                .note_text
+                                                            : ''
+                                                        const noteChanged =
+                                                          noteText.trim() !==
+                                                          existingNoteText.trim()
+                                                        let hasChanges =
+                                                          noteChanged
+                                                        if (!pass.success) {
+                                                          const diagnosisChanged =
+                                                            (passDiagnoses.get(
+                                                              passId
+                                                            )?.symptom ||
+                                                              '') !==
+                                                              (diagnosisInputs[
+                                                                passId
+                                                              ]?.symptom ||
+                                                                '') ||
+                                                            (passDiagnoses.get(
+                                                              passId
+                                                            )?.cause || '') !==
+                                                              (diagnosisInputs[
+                                                                passId
+                                                              ]?.cause || '') ||
+                                                            (passDiagnoses.get(
+                                                              passId
+                                                            )
+                                                              ?.jira_ticket_url ||
+                                                              '') !==
+                                                              (diagnosisInputs[
+                                                                passId
+                                                              ]
+                                                                ?.jiraTicketUrl ||
+                                                                '')
+                                                          hasChanges =
+                                                            noteChanged ||
+                                                            diagnosisChanged
+                                                        }
+                                                        if (
+                                                          hasChanges &&
+                                                          !savingMetadata.has(
+                                                            passId
+                                                          ) &&
+                                                          !metadataSuccess.has(
+                                                            passId
+                                                          )
+                                                        ) {
+                                                          e.currentTarget.style.backgroundColor =
+                                                            '#2563eb'
+                                                        }
+                                                      }}
+                                                      onMouseLeave={(e) => {
+                                                        const noteText =
+                                                          noteInputs[passId] ||
+                                                          ''
+                                                        const existingNoteText =
+                                                          passNotesData.length >
+                                                          0
+                                                            ? passNotesData[0]
+                                                                .note_text
+                                                            : ''
+                                                        const noteChanged =
+                                                          noteText.trim() !==
+                                                          existingNoteText.trim()
+                                                        let hasChanges =
+                                                          noteChanged
+                                                        if (!pass.success) {
+                                                          const diagnosisChanged =
+                                                            (passDiagnoses.get(
+                                                              passId
+                                                            )?.symptom ||
+                                                              '') !==
+                                                              (diagnosisInputs[
+                                                                passId
+                                                              ]?.symptom ||
+                                                                '') ||
+                                                            (passDiagnoses.get(
+                                                              passId
+                                                            )?.cause || '') !==
+                                                              (diagnosisInputs[
+                                                                passId
+                                                              ]?.cause || '') ||
+                                                            (passDiagnoses.get(
+                                                              passId
+                                                            )
+                                                              ?.jira_ticket_url ||
+                                                              '') !==
+                                                              (diagnosisInputs[
+                                                                passId
+                                                              ]
+                                                                ?.jiraTicketUrl ||
+                                                                '')
+                                                          hasChanges =
+                                                            noteChanged ||
+                                                            diagnosisChanged
+                                                        }
+                                                        if (
+                                                          hasChanges &&
+                                                          !savingMetadata.has(
+                                                            passId
+                                                          ) &&
+                                                          !metadataSuccess.has(
+                                                            passId
+                                                          )
+                                                        ) {
+                                                          e.currentTarget.style.backgroundColor =
+                                                            '#3b82f6'
+                                                        }
+                                                      }}
+                                                    >
+                                                      {savingMetadata.has(
+                                                        passId
+                                                      ) ? (
+                                                        <>
+                                                          <div
+                                                            style={{
+                                                              width: '12px',
+                                                              height: '12px',
+                                                              border:
+                                                                '2px solid #ffffff',
+                                                              borderTop:
+                                                                '2px solid transparent',
+                                                              borderRadius:
+                                                                '50%',
+                                                              animation:
+                                                                'spin 1s linear infinite',
+                                                            }}
+                                                          />
+                                                          Saving...
+                                                        </>
+                                                      ) : metadataSuccess.has(
+                                                          passId
+                                                        ) ? (
+                                                        '✓ Saved'
+                                                      ) : (
+                                                        'Save'
+                                                      )}
+                                                    </button>
+                                                  </div>
+                                                </div>
+                                              )}
+                                            </div>
+                                          </div>
+
+                                          {/* Parent container for Files and Notes columns */}
+                                          <div
+                                            style={{
+                                              display: 'flex',
+                                              margin: '0 12px',
+                                            }}
+                                          >
+                                            {/* Column 1: Files captured during this pass */}
+                                            <div
+                                              style={{
+                                                flex: '2 1 0%',
+                                                minWidth: 0,
+                                              }}
+                                            >
+                                              <PassFiles
+                                                pass={pass}
+                                                binaryDataManager={
+                                                  binaryDataManger.current!
+                                                }
+                                                viamClient={viamClient}
+                                                fetchTimestamp={fetchTimestamp}
+                                                expandedFiles={expandedFiles}
+                                                toggleFilesExpansion={
+                                                  toggleFilesExpansion
+                                                }
+                                                fileSearchInputs={
+                                                  fileSearchInputs
+                                                }
+                                                handleFileSearchChange={
+                                                  handleFileSearchChange
+                                                }
+                                                debouncedFileSearchInputs={
+                                                  debouncedFileSearchInputs
+                                                }
+                                                partId={partId}
+                                              />
+                                            </div>
                                           </div>
                                         </div>
                                       </div>
-                                    </div>
-                                  </td>
-                                </tr>
-                              )}
-                            </React.Fragment>
-                          );
-                        })}
-                      </React.Fragment>
-                    );
-                  })}
+                                    </td>
+                                  </tr>
+                                )}
+                              </React.Fragment>
+                            )
+                          })}
+                        </React.Fragment>
+                      )
+                    }
+                  )}
                 </tbody>
               </table>
             </div>
@@ -1806,12 +2760,15 @@ const AppInterface: React.FC<AppViewProps> = ({
       {/* Add pagination controls as sticky footer - only show when data is loaded */}
       {pagination && passSummaries.length > 0 && (
         <div className="pagination-container">
-          <div className="pagination-controls" style={{
-            display: 'flex',
-            justifyContent: 'center',
-            width: '100%',
-            gap: '4px'
-          }}>
+          <div
+            className="pagination-controls"
+            style={{
+              display: 'flex',
+              justifyContent: 'center',
+              width: '100%',
+              gap: '4px',
+            }}
+          >
             <button
               className="pagination-button"
               disabled={pagination.currentPage === 1}
@@ -1822,20 +2779,28 @@ const AppInterface: React.FC<AppViewProps> = ({
             <button
               className="pagination-button"
               disabled={pagination.currentPage === 1}
-              onClick={() => pagination.onPageChange(pagination.currentPage - 1)}
+              onClick={() =>
+                pagination.onPageChange(pagination.currentPage - 1)
+              }
             >
               &lt; Prev
             </button>
 
             {/* Page numbers */}
             {(() => {
-              const pages = [];
-              const maxVisible = 5; // Max visible page numbers
-              let startPage = Math.max(1, pagination.currentPage - Math.floor(maxVisible / 2));
-              const endPage = Math.min(pagination.totalPages, startPage + maxVisible - 1);
+              const pages = []
+              const maxVisible = 5 // Max visible page numbers
+              let startPage = Math.max(
+                1,
+                pagination.currentPage - Math.floor(maxVisible / 2)
+              )
+              const endPage = Math.min(
+                pagination.totalPages,
+                startPage + maxVisible - 1
+              )
 
               if (endPage - startPage + 1 < maxVisible) {
-                startPage = Math.max(1, endPage - maxVisible + 1);
+                startPage = Math.max(1, endPage - maxVisible + 1)
               }
 
               for (let i = startPage; i <= endPage; i++) {
@@ -1847,15 +2812,17 @@ const AppInterface: React.FC<AppViewProps> = ({
                   >
                     {i}
                   </button>
-                );
+                )
               }
-              return pages;
+              return pages
             })()}
 
             <button
               className="pagination-button"
               disabled={pagination.currentPage === pagination.totalPages}
-              onClick={() => pagination.onPageChange(pagination.currentPage + 1)}
+              onClick={() =>
+                pagination.onPageChange(pagination.currentPage + 1)
+              }
             >
               Next &gt;
             </button>
@@ -1879,13 +2846,13 @@ const AppInterface: React.FC<AppViewProps> = ({
         />
       )}
 
-      <GlobalLoadingIndicator 
-        isLoading={!!fetchTimestamp} 
+      <GlobalLoadingIndicator
+        isLoading={!!fetchTimestamp}
         currentDate={fetchTimestamp}
         fileCount={files.size + videoFiles.size + imageFiles.size}
       />
     </div>
-  );
-};
+  )
+}
 
-export default AppInterface;
+export default AppInterface

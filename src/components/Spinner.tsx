@@ -1,9 +1,9 @@
-import React from 'react';
+import React from 'react'
 
 interface SpinnerProps {
-  size?: string;
-  color?: string;
-  borderWidth?: string;
+  size?: string
+  color?: string
+  borderWidth?: string
 }
 
 const Spinner: React.FC<SpinnerProps> = ({
@@ -23,7 +23,7 @@ const Spinner: React.FC<SpinnerProps> = ({
         animation: 'spin 1s linear infinite',
       }}
     />
-  );
-};
+  )
+}
 
-export default Spinner;
+export default Spinner

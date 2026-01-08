@@ -1,15 +1,14 @@
-import React from "react";
+import React from 'react'
 
-interface ButtonProps
-  extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-  loading?: boolean;
-  loadingText?: string;
-  disabled?: boolean;
-  children?: React.ReactNode;
-  style?: React.CSSProperties;
+interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+  loading?: boolean
+  loadingText?: string
+  disabled?: boolean
+  children?: React.ReactNode
+  style?: React.CSSProperties
   // For mouse enter/leave styling
-  onMouseEnter?: React.MouseEventHandler<HTMLButtonElement>;
-  onMouseLeave?: React.MouseEventHandler<HTMLButtonElement>;
+  onMouseEnter?: React.MouseEventHandler<HTMLButtonElement>
+  onMouseLeave?: React.MouseEventHandler<HTMLButtonElement>
 }
 
 /**
@@ -19,7 +18,7 @@ interface ButtonProps
  */
 const Button: React.FC<ButtonProps> = ({
   loading = false,
-  loadingText = "Loading...",
+  loadingText = 'Loading...',
   disabled = false,
   children,
   style = {},
@@ -29,30 +28,30 @@ const Button: React.FC<ButtonProps> = ({
 }) => {
   // Styles for the loading spinner
   const spinnerStyle: React.CSSProperties = {
-    width: "12px",
-    height: "12px",
-    border: "2px solid #ffffff",
-    borderTop: "2px solid transparent",
-    borderRadius: "50%",
-    animation: "spin 1s linear infinite",
-    marginRight: "6px",
-  };
+    width: '12px',
+    height: '12px',
+    border: '2px solid #ffffff',
+    borderTop: '2px solid transparent',
+    borderRadius: '50%',
+    animation: 'spin 1s linear infinite',
+    marginRight: '6px',
+  }
 
   // Default styles, can be overridden via "style" prop
   const defaultStyle: React.CSSProperties = {
-    padding: "6px 8px",
-    fontSize: "12px",
-    backgroundColor: disabled ? "#9ca3af" : "#3b82f6",
-    color: "white",
-    border: "none",
-    borderRadius: "4px",
-    cursor: disabled ? "not-allowed" : "pointer",
-    transition: "background-color 0.2s",
-    display: "flex",
-    alignItems: "center",
-    gap: "6px",
+    padding: '6px 8px',
+    fontSize: '12px',
+    backgroundColor: disabled ? '#9ca3af' : '#3b82f6',
+    color: 'white',
+    border: 'none',
+    borderRadius: '4px',
+    cursor: disabled ? 'not-allowed' : 'pointer',
+    transition: 'background-color 0.2s',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '6px',
     ...style,
-  };
+  }
 
   return (
     <button
@@ -72,7 +71,7 @@ const Button: React.FC<ButtonProps> = ({
         children
       )}
     </button>
-  );
-};
+  )
+}
 
-export default Button;
+export default Button

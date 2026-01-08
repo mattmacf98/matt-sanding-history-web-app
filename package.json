@@ -9,6 +9,7 @@
     "preview": "vite preview",
     "sanity": "npm run typecheck && npm run lint",
     "typecheck": "tsc --noEmit",
+    "prettier": "prettier --write \"src/**/*.{js,jsx,ts,tsx}\"",
     "lint": "eslint \"src/**/*.{js,jsx,ts,tsx}\"",
     "lint:fix": "eslint \"src/**/*.{js,jsx,ts,tsx}\" --fix",
     "test": "vitest",

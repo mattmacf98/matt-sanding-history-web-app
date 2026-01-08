@@ -1,23 +1,23 @@
-import React from 'react';
+import React from 'react'
 
 interface RunStep {
-  name: string;
-  start: string;
-  end: string;
-  duration_ms: number;
+  name: string
+  start: string
+  end: string
+  duration_ms: number
 }
 
 interface RunData {
-  success: boolean;
-  err_string?: string;
-  start: string;
-  end: string;
-  duration_ms: number;
-  runs: RunStep[][];
+  success: boolean
+  err_string?: string
+  start: string
+  end: string
+  duration_ms: number
+  runs: RunStep[][]
 }
 
 interface RunsTableProps {
-  runData: RunData;
+  runData: RunData
 }
 
 const RunsTable: React.FC<RunsTableProps> = ({ runData }) => {
@@ -28,16 +28,16 @@ const RunsTable: React.FC<RunsTableProps> = ({ runData }) => {
     start: new Date(step.start).toLocaleString(),
     end: new Date(step.end).toLocaleString(),
     duration: `${(step.duration_ms / 1000).toFixed(2)}s`,
-    duration_ms: step.duration_ms
-  }));
+    duration_ms: step.duration_ms,
+  }))
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleString();
-  };
+    return new Date(dateString).toLocaleString()
+  }
 
   const formatDuration = (ms: number) => {
-    return `${(ms / 1000).toFixed(2)}s`;
-  };
+    return `${(ms / 1000).toFixed(2)}s`
+  }
 
   return (
     <div className="runs-table-container">
@@ -54,21 +54,63 @@ const RunsTable: React.FC<RunsTableProps> = ({ runData }) => {
           </div>
         )}
         <div className="timing-info">
-          <span><strong>Start:</strong> {formatDate(runData.start)}</span>
-          <span><strong>End:</strong> {formatDate(runData.end)}</span>
-          <span><strong>Total Duration:</strong> {formatDuration(runData.duration_ms)}</span>
+          <span>
+            <strong>Start:</strong> {formatDate(runData.start)}
+          </span>
+          <span>
+            <strong>End:</strong> {formatDate(runData.end)}
+          </span>
+          <span>
+            <strong>Total Duration:</strong>{' '}
+            {formatDuration(runData.duration_ms)}
+          </span>
         </div>
       </div>
 
       {/* Steps Table */}
-      <div className="table-container" style={{ marginTop: '20px', overflowX: 'auto' }}>
+      <div
+        className="table-container"
+        style={{ marginTop: '20px', overflowX: 'auto' }}
+      >
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead>
             <tr style={{ backgroundColor: '#f0f0f0' }}>
-              <th style={{ padding: '12px', textAlign: 'left', borderBottom: '2px solid #ddd' }}>Step Name</th>
-              <th style={{ padding: '12px', textAlign: 'left', borderBottom: '2px solid #ddd' }}>Start Time</th>
-              <th style={{ padding: '12px', textAlign: 'left', borderBottom: '2px solid #ddd' }}>End Time</th>
-              <th style={{ padding: '12px', textAlign: 'left', borderBottom: '2px solid #ddd' }}>Duration</th>
+              <th
+                style={{
+                  padding: '12px',
+                  textAlign: 'left',
+                  borderBottom: '2px solid #ddd',
+                }}
+              >
+                Step Name
+              </th>
+              <th
+                style={{
+                  padding: '12px',
+                  textAlign: 'left',
+                  borderBottom: '2px solid #ddd',
+                }}
+              >
+                Start Time
+              </th>
+              <th
+                style={{
+                  padding: '12px',
+                  textAlign: 'left',
+                  borderBottom: '2px solid #ddd',
+                }}
+              >
+                End Time
+              </th>
+              <th
+                style={{
+                  padding: '12px',
+                  textAlign: 'left',
+                  borderBottom: '2px solid #ddd',
+                }}
+              >
+                Duration
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -82,7 +124,14 @@ const RunsTable: React.FC<RunsTableProps> = ({ runData }) => {
             ))}
             {tableData.length === 0 && (
               <tr>
-                <td colSpan={4} style={{ padding: '20px', textAlign: 'center', color: '#888' }}>
+                <td
+                  colSpan={4}
+                  style={{
+                    padding: '20px',
+                    textAlign: 'center',
+                    color: '#888',
+                  }}
+                >
                   No data available
                 </td>
               </tr>
@@ -91,7 +140,7 @@ const RunsTable: React.FC<RunsTableProps> = ({ runData }) => {
         </table>
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default RunsTable;
+export default RunsTable

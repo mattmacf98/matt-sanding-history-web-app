@@ -1,24 +1,27 @@
-import React from 'react';
-import { formatDurationMs } from '../../lib/uiUtils';
+import React from 'react'
+import { formatDurationMs } from '../../lib/uiUtils'
 
 export interface DayAggregateData {
-  totalFactoryTime: number;
-  totalExecutionTime: number;
-  totalOtherStepsTime: number;
-  totalPassCount: number;
-  executionPercentage: number;
-  formattedDate: string;
-  totalBluePoints: number;
-  symptomCounts: Map<string, number>;
-  causeCounts: Map<string, number>;
+  totalFactoryTime: number
+  totalExecutionTime: number
+  totalOtherStepsTime: number
+  totalPassCount: number
+  executionPercentage: number
+  formattedDate: string
+  totalBluePoints: number
+  symptomCounts: Map<string, number>
+  causeCounts: Map<string, number>
 }
 
 interface DaySummaryHeaderProps {
-  data: DayAggregateData;
-  colSpan?: number;
+  data: DayAggregateData
+  colSpan?: number
 }
 
-export const DaySummaryHeader: React.FC<DaySummaryHeaderProps> = ({ data, colSpan = 13 }) => {
+export const DaySummaryHeader: React.FC<DaySummaryHeaderProps> = ({
+  data,
+  colSpan = 13,
+}) => {
   const {
     totalFactoryTime,
     totalExecutionTime,
@@ -27,8 +30,8 @@ export const DaySummaryHeader: React.FC<DaySummaryHeaderProps> = ({ data, colSpa
     executionPercentage,
     formattedDate,
     symptomCounts,
-    causeCounts
-  } = data;
+    causeCounts,
+  } = data
 
   return (
     <tr className="day-summary-header">
@@ -42,23 +45,34 @@ export const DaySummaryHeader: React.FC<DaySummaryHeaderProps> = ({ data, colSpa
             </div>
             <div className="day-summary-item">
               <span className="day-summary-label">Total Time</span>
-              <span className="day-summary-value">{formatDurationMs(totalFactoryTime)}</span>
+              <span className="day-summary-value">
+                {formatDurationMs(totalFactoryTime)}
+              </span>
             </div>
             <div className="day-summary-item">
               <span className="day-summary-label">Executing Time</span>
-              <span className="day-summary-value">{formatDurationMs(totalExecutionTime)}</span>
+              <span className="day-summary-value">
+                {formatDurationMs(totalExecutionTime)}
+              </span>
             </div>
             <div className="day-summary-item">
               <span className="day-summary-label">Other Steps Time</span>
-              <span className="day-summary-value">{formatDurationMs(totalOtherStepsTime)}</span>
+              <span className="day-summary-value">
+                {formatDurationMs(totalOtherStepsTime)}
+              </span>
             </div>
             <div className="day-summary-item">
               <span className="day-summary-label">Execution %</span>
-              <span className="day-summary-value">{executionPercentage.toFixed(1)}%</span>
+              <span className="day-summary-value">
+                {executionPercentage.toFixed(1)}%
+              </span>
             </div>
             <div className="day-summary-item diagnosis-item">
               <span className="day-summary-label">Symptoms</span>
-              <span className="day-summary-value diagnosis-list" style={{ fontSize: '11px', lineHeight: '1.4' }}>
+              <span
+                className="day-summary-value diagnosis-list"
+                style={{ fontSize: '11px', lineHeight: '1.4' }}
+              >
                 {symptomCounts.size > 0 ? (
                   Array.from(symptomCounts.entries())
                     .sort((a, b) => b[1] - a[1])
@@ -74,7 +88,10 @@ export const DaySummaryHeader: React.FC<DaySummaryHeaderProps> = ({ data, colSpa
             </div>
             <div className="day-summary-item diagnosis-item">
               <span className="day-summary-label">Causes</span>
-              <span className="day-summary-value diagnosis-list" style={{ fontSize: '11px', lineHeight: '1.4' }}>
+              <span
+                className="day-summary-value diagnosis-list"
+                style={{ fontSize: '11px', lineHeight: '1.4' }}
+              >
                 {causeCounts.size > 0 ? (
                   Array.from(causeCounts.entries())
                     .sort((a, b) => b[1] - a[1])
@@ -92,7 +109,7 @@ export const DaySummaryHeader: React.FC<DaySummaryHeaderProps> = ({ data, colSpa
         </div>
       </td>
     </tr>
-  );
-};
+  )
+}
 
-export default DaySummaryHeader;
+export default DaySummaryHeader

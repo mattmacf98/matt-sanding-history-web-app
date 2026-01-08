@@ -1,11 +1,11 @@
-import React from 'react';
-import * as VIAM from "@viamrobotics/sdk";
-import ImageDisplay from './ImageDisplay';
+import React from 'react'
+import * as VIAM from '@viamrobotics/sdk'
+import ImageDisplay from './ImageDisplay'
 
 interface BeforeAfterModalProps {
-  beforeImage: VIAM.dataApi.BinaryData | null;
-  afterImage: VIAM.dataApi.BinaryData | null;
-  onClose: () => void;
+  beforeImage: VIAM.dataApi.BinaryData | null
+  afterImage: VIAM.dataApi.BinaryData | null
+  onClose: () => void
 }
 
 const BeforeAfterModal: React.FC<BeforeAfterModalProps> = ({
@@ -15,22 +15,22 @@ const BeforeAfterModal: React.FC<BeforeAfterModalProps> = ({
 }) => {
   const handleEscapeKey = (event: KeyboardEvent) => {
     if (event.key === 'Escape') {
-      onClose();
+      onClose()
     }
-  };
+  }
 
   React.useEffect(() => {
-    document.addEventListener('keydown', handleEscapeKey);
-    document.body.style.overflow = 'hidden';
-    
+    document.addEventListener('keydown', handleEscapeKey)
+    document.body.style.overflow = 'hidden'
+
     return () => {
-      document.removeEventListener('keydown', handleEscapeKey);
-      document.body.style.overflow = 'unset';
-    };
-  }, []);
+      document.removeEventListener('keydown', handleEscapeKey)
+      document.body.style.overflow = 'unset'
+    }
+  }, [])
 
   if (!beforeImage && !afterImage) {
-    return null;
+    return null
   }
 
   return (
@@ -38,22 +38,28 @@ const BeforeAfterModal: React.FC<BeforeAfterModalProps> = ({
       <div className="before-after-modal" onClick={(e) => e.stopPropagation()}>
         <div className="before-after-modal-header">
           <h3>Before & After Comparison</h3>
-          <button className="before-after-modal-close" onClick={onClose}>×</button>
+          <button className="before-after-modal-close" onClick={onClose}>
+            ×
+          </button>
         </div>
-        
+
         <div className="before-after-modal-content">
           <div className="before-after-grid">
             <div className="before-after-section">
               <h4 className="before-after-title">Before</h4>
               {beforeImage ? (
                 <div className="before-after-image-container">
-                  <ImageDisplay 
+                  <ImageDisplay
                     binaryData={beforeImage}
                     className="before-after-image"
                     alt="Before image"
                   />
                   <div className="before-after-info">
-                    <p>{beforeImage.metadata?.timeRequested?.toDate().toLocaleString()}</p>
+                    <p>
+                      {beforeImage.metadata?.timeRequested
+                        ?.toDate()
+                        .toLocaleString()}
+                    </p>
                   </div>
                 </div>
               ) : (
@@ -69,13 +75,17 @@ const BeforeAfterModal: React.FC<BeforeAfterModalProps> = ({
               <h4 className="before-after-title">After</h4>
               {afterImage ? (
                 <div className="before-after-image-container">
-                  <ImageDisplay 
+                  <ImageDisplay
                     binaryData={afterImage}
                     className="before-after-image"
                     alt="After image"
                   />
                   <div className="before-after-info">
-                    <p>{afterImage.metadata?.timeRequested?.toDate().toLocaleString()}</p>
+                    <p>
+                      {afterImage.metadata?.timeRequested
+                        ?.toDate()
+                        .toLocaleString()}
+                    </p>
                   </div>
                 </div>
               ) : (
@@ -90,7 +100,7 @@ const BeforeAfterModal: React.FC<BeforeAfterModalProps> = ({
         </div>
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default BeforeAfterModal;
+export default BeforeAfterModal
