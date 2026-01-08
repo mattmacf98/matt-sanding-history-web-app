@@ -9,5 +9,5 @@ node_modules: package-lock.json
 
 setup-linux:
 	which npm > /dev/null 2>&1 || \
-	curl -fsSL https://deb.nodesource.com/setup_20.x | bash - && \
+	curl -fsSL https://deb.nodesource.com/setup_22.x | bash - && \
 	apt-get install -y nodejs
