@@ -1,14 +1,8 @@
 {
   "module_id": "mattmacf:sanding-history-web-app",
   "visibility": "public",
-  "url": "https://github.com/viam-labs/sanding-history-web-app",
+  "url": "https://github.com/mattmacf98/matt-sanding-history-web-app",
   "description": "A web app to monitor sanding",
-  "build": {
-    "build": "make module",
-    "setup": "make setup-linux",
-    "arch": ["linux/amd64", "linux/arm64"],
-    "path": "module.tar.gz"
-  },
   "applications": [
     {
       "name": "sanding-monitoring-web-app",
