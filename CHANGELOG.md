@@ -1,5 +1,11 @@
 # sanding-monitoring-web-app
 
+## 1.5.1
+
+### Patch Changes
+
+- 46eac1a: refactor app.tsx states and functions into contexts
+
 ## 1.5.0
 
 ### Minor Changes
