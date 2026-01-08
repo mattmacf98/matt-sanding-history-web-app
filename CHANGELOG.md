@@ -1,5 +1,11 @@
 # sanding-monitoring-web-app
 
+## 1.5.3
+
+### Patch Changes
+
+- 2a120cd: use dev meta
+
 ## 1.5.2
 
 ### Patch Changes
