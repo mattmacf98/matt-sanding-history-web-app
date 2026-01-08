@@ -1,5 +1,11 @@
 # sanding-monitoring-web-app
 
+## 1.5.2
+
+### Patch Changes
+
+- e9da8d6: fix: bug fix for pagination state effect triggering
+
 ## 1.5.1
 
 ### Patch Changes
