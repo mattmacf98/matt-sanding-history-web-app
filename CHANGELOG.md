@@ -1,5 +1,11 @@
 # sanding-monitoring-web-app
 
+## 1.5.2
+
+### Patch Changes
+
+- bf68552: better make
+
 ## 1.5.1
 
 ### Patch Changes
