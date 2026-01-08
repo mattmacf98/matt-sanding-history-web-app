@@ -92,6 +92,11 @@ function App() {
     return (
       <NewAppInterface
         passSummaries={currentPassSummaries}
+        files={files}
+        videoFiles={videoFiles}
+        imageFiles={imageFiles}
+        fetchVideos={fetchFiles}
+        fetchTimestamp={fetchTimestamp}
         partId={partId}
         passNotes={passNotes}
         onNotesUpdate={setPassNotes}
