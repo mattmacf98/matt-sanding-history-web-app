@@ -389,14 +389,12 @@ function App() {
   } else {
     return (
       <NewAppInterface
-        machineName={machineName}
         passSummaries={currentPassSummaries}
         files={files}
         videoFiles={videoFiles}
         imageFiles={imageFiles}
         fetchVideos={fetchFiles}
         fetchTimestamp={fetchTimestamp}
-        machineId={machineId}
         partId={partId}
         passNotes={passNotes}
         onNotesUpdate={setPassNotes}
