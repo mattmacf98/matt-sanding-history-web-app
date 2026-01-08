@@ -1,13 +1,12 @@
 import { useEffect, useState } from 'react'
-import * as VIAM from '@viamrobotics/sdk'
 import { JsonValue } from '@viamrobotics/sdk'
 import { Pass, PassNote, PassDiagnosis } from './lib/types'
-import { Timestamp } from '@bufbuild/protobuf'
 import { getPassMetadataManager } from './lib/passMetadataManager'
 import { useViamClients } from './lib/contexts/ViamClientContext'
 import { useEnvironment } from './lib/contexts/EnvironmentContext'
 import AppInterface from './AppInterface'
 import NewAppInterface from './NewAppInterface'
+import { useFiles } from './lib/contexts/FilesContext'
 
 const sandingSummaryName = 'sanding-summary'
 const sandingSummaryComponentType = 'rdk:component:sensor'
@@ -17,18 +16,11 @@ function App() {
   const { locationId, machineId, machineName, organizationId, viamClient } =
     useViamClients()
   const { legacy } = useEnvironment()
+  const { fetchFiles, fetchTimestamp, files, videoFiles, imageFiles } =
+    useFiles()
 
   const [passSummaries, setPassSummaries] = useState<Pass[]>([])
-  const [files, setFiles] = useState<Map<string, VIAM.dataApi.BinaryData>>(
-    new Map()
-  )
-  const [videoFiles, setVideoFiles] = useState<
-    Map<string, VIAM.dataApi.BinaryData>
-  >(new Map())
-  const [imageFiles, setImageFiles] = useState<
-    Map<string, VIAM.dataApi.BinaryData>
-  >(new Map())
-  const [fetchTimestamp, setFetchTimestamp] = useState<Date | null>(null)
+
   const [partId, setPartId] = useState<string>('')
   const [passNotes, setPassNotes] = useState<Map<string, PassNote[]>>(new Map())
   const [passDiagnoses, setPassDiagnoses] = useState<
@@ -37,112 +29,6 @@ function App() {
   const [fetchingNotes, setFetchingNotes] = useState<boolean>(false)
   const [currentPage, setCurrentPage] = useState(1)
   const itemsPerPage = 7 // 7 days per page
-
-  // TODO: context for these files and the passes, then can combine App and AppInterface into one component
-  const fetchFiles = async (
-    start: Date,
-    shouldSetLoadingState: boolean = true
-  ) => {
-    const end = new Date()
-
-    console.log('Fetching for time range:', start, end)
-    if (shouldSetLoadingState) {
-      setFetchTimestamp(start)
-    }
-
-    const filter = {
-      robotId: machineId,
-      interval: {
-        start: Timestamp.fromDate(start),
-        end: Timestamp.fromDate(end),
-      } as VIAM.dataApi.CaptureInterval,
-    } as VIAM.dataApi.Filter
-
-    let paginationToken: string | undefined = undefined
-
-    // Process files in batches
-    while (true) {
-      const binaryData = await viamClient.dataClient.binaryDataByFilter(
-        filter,
-        1000,
-        VIAM.dataApi.Order.DESCENDING,
-        paginationToken,
-        false,
-        false,
-        false
-      )
-
-      const newFiles = new Map<string, VIAM.dataApi.BinaryData>()
-      const newVideoFiles = new Map<string, VIAM.dataApi.BinaryData>()
-      const newImages = new Map<string, VIAM.dataApi.BinaryData>()
-
-      binaryData.data.forEach((file) => {
-        if (file.metadata?.binaryDataId) {
-          const isVideo = file.metadata.fileName?.toLowerCase().includes('.mp4')
-          const isImageFile = file.metadata.fileName
-            ?.toLowerCase()
-            .match(/\.(png|jpg|jpeg)$/)
-          const isCameraCapture =
-            file.metadata.captureMetadata?.componentName &&
-            file.metadata.captureMetadata?.methodName
-
-          if (isVideo) {
-            // Video files go to videoFiles
-            newVideoFiles.set(file.metadata.binaryDataId, file)
-          } else if (isImageFile || isCameraCapture) {
-            // Image files go to images
-            newImages.set(file.metadata.binaryDataId, file)
-          } else {
-            // Other files go to files
-            newFiles.set(file.metadata.binaryDataId, file)
-          }
-        }
-      })
-
-      paginationToken = binaryData.last
-
-      if (binaryData.data.length > 0 && shouldSetLoadingState) {
-        setFetchTimestamp(
-          binaryData.data[
-            binaryData.data.length - 1
-          ].metadata!.timeRequested!.toDate()
-        )
-      }
-
-      setFiles((prevFiles) => {
-        const updatedFiles = new Map(prevFiles)
-        newFiles.forEach((file, id) => {
-          updatedFiles.set(id, file)
-        })
-        return updatedFiles
-      })
-
-      setVideoFiles((prevVideoFiles) => {
-        const updatedVideoFiles = new Map(prevVideoFiles)
-        newVideoFiles.forEach((file, id) => {
-          updatedVideoFiles.set(id, file)
-        })
-        return updatedVideoFiles
-      })
-
-      setImageFiles((prevImageFiles) => {
-        const updatedImageFiles = new Map(prevImageFiles)
-        newImages.forEach((file, id) => {
-          updatedImageFiles.set(id, file)
-        })
-        return updatedImageFiles
-      })
-
-      // Break if no more data to fetch
-      if (!binaryData.last) break
-    }
-    console.log('total files count:', files.size)
-    console.log('total video files count:', videoFiles.size)
-
-    if (shouldSetLoadingState) {
-      setFetchTimestamp(null)
-    }
-  }
 
   useEffect(() => {
     const fetchPasses = async () => {
@@ -321,7 +207,7 @@ function App() {
   useEffect(() => {
     if (passSummaries.length > 0 && viamClient) {
       const earliestVideoTime = passSummaries[passSummaries.length - 1].start
-      fetchFiles(earliestVideoTime)
+      fetchFiles(earliestVideoTime, true)
     }
   }, [passSummaries, viamClient])
 
@@ -390,11 +276,6 @@ function App() {
     return (
       <NewAppInterface
         passSummaries={currentPassSummaries}
-        files={files}
-        videoFiles={videoFiles}
-        imageFiles={imageFiles}
-        fetchVideos={fetchFiles}
-        fetchTimestamp={fetchTimestamp}
         partId={partId}
         passNotes={passNotes}
         onNotesUpdate={setPassNotes}

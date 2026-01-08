@@ -8,14 +8,10 @@ import { ResourceSelection } from './components/ResouceSelection'
 import BeforeAfterModal from './components/BeforeAfterModal'
 import { Pagination } from './components/HistoryTable/Pagination'
 import HistoryTable from './components/HistoryTable'
+import { useFiles } from './lib/contexts/FilesContext'
 
 interface AppViewProps {
   passSummaries?: any[]
-  files: Map<string, VIAM.dataApi.BinaryData>
-  videoFiles: Map<string, VIAM.dataApi.BinaryData>
-  imageFiles: Map<string, VIAM.dataApi.BinaryData>
-  fetchVideos: (start: Date) => Promise<void>
-  fetchTimestamp: Date | null
   partId: string
   passNotes: Map<string, PassNote[]>
   onNotesUpdate: React.Dispatch<React.SetStateAction<Map<string, PassNote[]>>>
@@ -38,11 +34,6 @@ interface AppViewProps {
 
 const AppInterface: React.FC<AppViewProps> = ({
   passSummaries = [],
-  files,
-  videoFiles,
-  imageFiles,
-  fetchVideos,
-  fetchTimestamp,
   partId,
   passNotes,
   onNotesUpdate,
@@ -51,6 +42,8 @@ const AppInterface: React.FC<AppViewProps> = ({
   fetchingNotes,
   pagination,
 }) => {
+  const { fetchTimestamp, files, videoFiles, imageFiles, fetchFiles } =
+    useFiles()
   const [videoStoreClient, setVideoStoreClient] =
     useState<VIAM.GenericComponentClient | null>(null)
   const [selectedCamera, setSelectedCamera] = useState<string>(() => {
@@ -135,7 +128,7 @@ const AppInterface: React.FC<AppViewProps> = ({
             imageFiles={imageFiles}
             videoFiles={videoFiles}
             fetchTimestamp={fetchTimestamp}
-            fetchVideos={fetchVideos}
+            fetchVideos={(start: Date) => fetchFiles(start, true)}
             files={files}
           />
         </section>
