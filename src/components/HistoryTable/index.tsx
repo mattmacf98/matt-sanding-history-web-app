@@ -25,7 +25,6 @@ import { StepsGrid } from './StepsGrid'
 
 interface HistoryTableProps {
   partId: string //TODO: can thes just be grabbed from the viam context?
-  machineId: string
   passSummaries?: any[]
   fetchingNotes: boolean
   passNotes: Map<string, PassNote[]> // TODO: notes and diagnosis contexts?
@@ -49,7 +48,6 @@ interface HistoryTableProps {
 
 const HistoryTable: React.FC<HistoryTableProps> = ({
   partId,
-  machineId,
   passSummaries = [],
   fetchingNotes,
   passNotes,
@@ -65,7 +63,7 @@ const HistoryTable: React.FC<HistoryTableProps> = ({
   fetchVideos,
   files,
 }) => {
-  const { viamClient, organizationId } = useViamClients()
+  const { viamClient, organizationId, machineId } = useViamClients()
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set())
   const [noteInputs, setNoteInputs] = useState<Record<string, string>>({})
   const [fileSearchInputs, setFileSearchInputs] = useState<

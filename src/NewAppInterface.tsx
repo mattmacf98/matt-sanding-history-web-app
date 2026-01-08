@@ -15,9 +15,7 @@ interface AppViewProps {
   videoFiles: Map<string, VIAM.dataApi.BinaryData>
   imageFiles: Map<string, VIAM.dataApi.BinaryData>
   fetchVideos: (start: Date) => Promise<void>
-  machineName: string | null
   fetchTimestamp: Date | null
-  machineId: string
   partId: string
   passNotes: Map<string, PassNote[]>
   onNotesUpdate: React.Dispatch<React.SetStateAction<Map<string, PassNote[]>>>
@@ -39,14 +37,12 @@ interface AppViewProps {
 }
 
 const AppInterface: React.FC<AppViewProps> = ({
-  machineName,
   passSummaries = [],
   files,
   videoFiles,
   imageFiles,
   fetchVideos,
   fetchTimestamp,
-  machineId,
   partId,
   passNotes,
   onNotesUpdate,
@@ -119,7 +115,6 @@ const AppInterface: React.FC<AppViewProps> = ({
       <main className="mainContent">
         <section>
           <ResourceSelection
-            machineName={machineName || ''}
             setVideoStoreClient={setVideoStoreClient}
             cameraComponentNames={cameraComponentNames}
             selectedCamera={selectedCamera}
@@ -130,7 +125,6 @@ const AppInterface: React.FC<AppViewProps> = ({
             videoStoreClient={videoStoreClient}
             setBeforeAfterModal={setBeforeAfterModal}
             partId={partId}
-            machineId={machineId}
             passSummaries={passSummaries}
             fetchingNotes={fetchingNotes}
             passNotes={passNotes}
