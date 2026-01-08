@@ -1,21 +1,20 @@
-import React, { useState, useEffect, useRef } from "react";
-import * as VIAM from "@viamrobotics/sdk";
-import VideoModal from "./VideoModal";
-import { Step } from "../lib/types";
-import { generateVideo } from "../lib/videoUtils";
-import { VideoPollingManager } from "../lib/videoPollingManager";
-import { constructStepLogUrl } from "../lib/uiUtils";
-
+import React, { useState, useEffect, useRef } from 'react'
+import * as VIAM from '@viamrobotics/sdk'
+import VideoModal from './VideoModal'
+import { Step } from '../lib/types'
+import { generateVideo } from '../lib/videoUtils'
+import { VideoPollingManager } from '../lib/videoPollingManager'
+import { constructStepLogUrl } from '../lib/uiUtils'
 
 interface StepVideosGridProps {
-  stepVideos: VIAM.dataApi.BinaryData[];
-  videoFiles: Map<string, VIAM.dataApi.BinaryData>;
-  videoStoreClient?: VIAM.GenericComponentClient | null;
-  step: Step;
-  fetchVideos: (start: Date, shouldSetLoadingState: boolean) => Promise<void>;
-  fetchTimestamp: Date | null;
-  machineId: string;
-  organizationId: string;
+  stepVideos: VIAM.dataApi.BinaryData[]
+  videoFiles: Map<string, VIAM.dataApi.BinaryData>
+  videoStoreClient?: VIAM.GenericComponentClient | null
+  step: Step
+  fetchVideos: (start: Date, shouldSetLoadingState: boolean) => Promise<void>
+  fetchTimestamp: Date | null
+  machineId: string
+  organizationId: string
 }
 
 const StepVideosGrid: React.FC<StepVideosGridProps> = ({
@@ -29,111 +28,117 @@ const StepVideosGrid: React.FC<StepVideosGridProps> = ({
   organizationId,
 }) => {
   const [selectedVideo, setSelectedVideo] =
-    useState<VIAM.dataApi.BinaryData | null>(null);
-  const [modalVideoUrl, setModalVideoUrl] = useState<string | null>(null);
+    useState<VIAM.dataApi.BinaryData | null>(null)
+  const [modalVideoUrl, setModalVideoUrl] = useState<string | null>(null)
 
-  const [isPolling, setIsPolling] = useState<boolean>(false);
-  const requestIdRef = useRef<string | null>(null);
-  const pollingManager = VideoPollingManager.getInstance();
+  const [isPolling, setIsPolling] = useState<boolean>(false)
+  const requestIdRef = useRef<string | null>(null)
+  const pollingManager = VideoPollingManager.getInstance()
 
   // Add CSS keyframes for spinner animation
   useEffect(() => {
-    const style = document.createElement('style');
+    const style = document.createElement('style')
     style.textContent = `
       @keyframes spin {
         0% { transform: rotate(0deg); }
         100% { transform: rotate(360deg); }
       }
-    `;
-    document.head.appendChild(style);
+    `
+    document.head.appendChild(style)
 
     return () => {
-      document.head.removeChild(style);
-    };
-  }, []);
+      document.head.removeChild(style)
+    }
+  }, [])
 
   // Register this step's fetch function with the polling manager when generating
   // The polling manager will use the most recent fetchVideos function set
   const registerFetchForPolling = () => {
-    pollingManager.setFetchData(() => fetchVideos(step.start, false));
-  };
+    pollingManager.setFetchData(() => fetchVideos(step.start, false))
+  }
 
   // Update polling manager whenever videoFiles changes
   useEffect(() => {
-    pollingManager.updateCurrentVideos(videoFiles);
-    pollingManager.forceVideoCheck();
-  }, [videoFiles]);
+    pollingManager.updateCurrentVideos(videoFiles)
+    pollingManager.forceVideoCheck()
+  }, [videoFiles])
 
   // Stop polling if videos are now available (handles the case where video appears)
   useEffect(() => {
     if (stepVideos.length > 0 && isPolling) {
-      setIsPolling(false);
+      setIsPolling(false)
       if (requestIdRef.current) {
-        pollingManager.removeRequest(requestIdRef.current);
-        requestIdRef.current = null;
+        pollingManager.removeRequest(requestIdRef.current)
+        requestIdRef.current = null
       }
     }
-  }, [stepVideos, isPolling]);
+  }, [stepVideos, isPolling])
 
   // Clean up on unmount
   useEffect(() => {
     return () => {
       if (requestIdRef.current) {
-        pollingManager.removeRequest(requestIdRef.current);
+        pollingManager.removeRequest(requestIdRef.current)
       }
-    };
-  }, []);
+    }
+  }, [])
 
   const handleVideoClick = (video: VIAM.dataApi.BinaryData) => {
-    setSelectedVideo(video);
-  };
+    setSelectedVideo(video)
+  }
 
   const closeVideoModal = () => {
     // Clean up video URL if it exists
-    if (modalVideoUrl && modalVideoUrl.startsWith("blob:")) {
-      URL.revokeObjectURL(modalVideoUrl);
+    if (modalVideoUrl && modalVideoUrl.startsWith('blob:')) {
+      URL.revokeObjectURL(modalVideoUrl)
     }
-    setSelectedVideo(null);
-    setModalVideoUrl(null);
-  };
+    setSelectedVideo(null)
+    setModalVideoUrl(null)
+  }
 
   const handleGenerateVideo = async () => {
     if (!videoStoreClient) {
-      console.error("No video store client available");
-      return;
+      console.error('No video store client available')
+      return
     }
 
     // Register fetch function for this step's time range
-    registerFetchForPolling();
+    registerFetchForPolling()
 
-    setIsPolling(true);
+    setIsPolling(true)
 
     try {
       // Start video generation
-      await generateVideo(videoStoreClient, step);
+      await generateVideo(videoStoreClient, step)
 
       // Add to polling manager
       requestIdRef.current = pollingManager.addRequest(step, () => {
-        setIsPolling(false);
-      });
-
+        setIsPolling(false)
+      })
     } catch (error) {
-      console.error("Error generating video:", error);
-      setIsPolling(false);
+      console.error('Error generating video:', error)
+      setIsPolling(false)
     }
-  };
+  }
 
-  if (stepVideos.length === 0 && fetchTimestamp && fetchTimestamp > step.start) {
+  if (
+    stepVideos.length === 0 &&
+    fetchTimestamp &&
+    fetchTimestamp > step.start
+  ) {
     return (
       <>
-        <div className="loading-state" style={{
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          padding: '20px',
-          color: '#6b7280'
-        }}>
+        <div
+          className="loading-state"
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '20px',
+            color: '#6b7280',
+          }}
+        >
           <div
             style={{
               width: '24px',
@@ -142,42 +147,52 @@ const StepVideosGrid: React.FC<StepVideosGridProps> = ({
               borderTop: '3px solid #3b82f6',
               borderRadius: '50%',
               animation: 'spin 1s linear infinite',
-              marginBottom: '8px'
+              marginBottom: '8px',
             }}
           />
           <div style={{ fontSize: '14px' }}>Loading videos...</div>
         </div>
-        {machineId && organizationId && (step.end.getTime() - step.start.getTime()) >= 1000 && (
-          <a
-            href={constructStepLogUrl(step.start, step.end, machineId, organizationId)}
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{
-              display: 'block',
-              marginTop: '8px',
-              color: '#3b82f6',
-              fontSize: '12px',
-              textDecoration: 'underline',
-              textAlign: 'center',
-            }}
-          >
-            View logs for this step
-          </a>
-        )}
+        {machineId &&
+          organizationId &&
+          step.end.getTime() - step.start.getTime() >= 1000 && (
+            <a
+              href={constructStepLogUrl(
+                step.start,
+                step.end,
+                machineId,
+                organizationId
+              )}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                display: 'block',
+                marginTop: '8px',
+                color: '#3b82f6',
+                fontSize: '12px',
+                textDecoration: 'underline',
+                textAlign: 'center',
+              }}
+            >
+              View logs for this step
+            </a>
+          )}
       </>
-    );
+    )
   }
 
   if (stepVideos.length === 0) {
     return (
       <>
-        <div className="generate-video" style={{
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          marginTop: '18px'
-        }}>
+        <div
+          className="generate-video"
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            marginTop: '18px',
+          }}
+        >
           <button
             className="generate-video-button"
             onClick={() => handleGenerateVideo()}
@@ -185,24 +200,28 @@ const StepVideosGrid: React.FC<StepVideosGridProps> = ({
             style={{
               padding: '6px 8px',
               fontSize: '12px',
-              backgroundColor: (videoStoreClient == null || isPolling) ? '#9ca3af' : '#3b82f6',
+              backgroundColor:
+                videoStoreClient == null || isPolling ? '#9ca3af' : '#3b82f6',
               color: 'white',
               border: 'none',
               borderRadius: '4px',
-              cursor: (videoStoreClient == null || isPolling) ? 'not-allowed' : 'pointer',
+              cursor:
+                videoStoreClient == null || isPolling
+                  ? 'not-allowed'
+                  : 'pointer',
               transition: 'background-color 0.2s',
               display: 'flex',
               alignItems: 'center',
-              gap: '6px'
+              gap: '6px',
             }}
             onMouseEnter={(e) => {
               if (videoStoreClient && !isPolling) {
-                e.currentTarget.style.backgroundColor = '#2563eb';
+                e.currentTarget.style.backgroundColor = '#2563eb'
               }
             }}
             onMouseLeave={(e) => {
               if (videoStoreClient && !isPolling) {
-                e.currentTarget.style.backgroundColor = '#3b82f6';
+                e.currentTarget.style.backgroundColor = '#3b82f6'
               }
             }}
           >
@@ -215,7 +234,7 @@ const StepVideosGrid: React.FC<StepVideosGridProps> = ({
                     border: '2px solid #ffffff',
                     borderTop: '2px solid transparent',
                     borderRadius: '50%',
-                    animation: 'spin 1s linear infinite'
+                    animation: 'spin 1s linear infinite',
                   }}
                 />
                 Generating...
@@ -230,16 +249,101 @@ const StepVideosGrid: React.FC<StepVideosGridProps> = ({
                 marginTop: '8px',
                 fontSize: '12px',
                 color: '#6b7280',
-                textAlign: 'center'
+                textAlign: 'center',
               }}
             >
               This can take up to a minute.
             </div>
           )}
         </div>
-        {machineId && organizationId && (step.end.getTime() - step.start.getTime()) >= 1000 && (
+        {machineId &&
+          organizationId &&
+          step.end.getTime() - step.start.getTime() >= 1000 && (
+            <a
+              href={constructStepLogUrl(
+                step.start,
+                step.end,
+                machineId,
+                organizationId
+              )}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                display: 'block',
+                marginTop: '8px',
+                color: '#3b82f6',
+                fontSize: '12px',
+                textDecoration: 'underline',
+                textAlign: 'center',
+              }}
+            >
+              View logs for this step
+            </a>
+          )}
+      </>
+    )
+  }
+
+  return (
+    <>
+      <div className="step-videos-grid">
+        {stepVideos.map((video, videoIndex) => (
+          <div
+            key={videoIndex}
+            style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}
+          >
+            <div
+              className="step-video-item"
+              onClick={() => handleVideoClick(video)}
+            >
+              <div className="video-thumbnail-container">
+                <div className="video-thumbnail">
+                  <span className="video-icon">🎬</span>
+                </div>
+              </div>
+            </div>
+            {video.metadata?.uri && (
+              <a
+                href={video.metadata.uri}
+                download={
+                  video.metadata?.fileName?.split('/').pop() || 'video.mp4'
+                }
+                onClick={(e) => e.stopPropagation()}
+                style={{
+                  padding: '4px 8px',
+                  backgroundColor: '#3b82f6',
+                  color: 'white',
+                  borderRadius: '4px',
+                  textDecoration: 'none',
+                  fontSize: '11px',
+                  textAlign: 'center',
+                  cursor: 'pointer',
+                  transition: 'background-color 0.2s',
+                  border: 'none',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = '#2563eb'
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = '#3b82f6'
+                }}
+              >
+                Download
+              </a>
+            )}
+          </div>
+        ))}
+      </div>
+      {machineId &&
+        organizationId &&
+        step.end.getTime() - step.start.getTime() >= 1000 && (
           <a
-            href={constructStepLogUrl(step.start, step.end, machineId, organizationId)}
+            href={constructStepLogUrl(
+              step.start,
+              step.end,
+              machineId,
+              organizationId
+            )}
             target="_blank"
             rel="noopener noreferrer"
             style={{
@@ -254,78 +358,9 @@ const StepVideosGrid: React.FC<StepVideosGridProps> = ({
             View logs for this step
           </a>
         )}
-      </>
-    );
-  }
-
-  return (
-    <>
-      <div className="step-videos-grid">
-        {stepVideos.map((video, videoIndex) => (
-          <div key={videoIndex} style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-            <div
-              className="step-video-item"
-              onClick={() => handleVideoClick(video)}
-            >
-              <div className="video-thumbnail-container">
-                <div className="video-thumbnail">
-                  <span className="video-icon">🎬</span>
-                </div>
-              </div>
-            </div>
-            {video.metadata?.uri && (
-              <a
-                href={video.metadata.uri}
-                download={video.metadata?.fileName?.split('/').pop() || 'video.mp4'}
-                onClick={(e) => e.stopPropagation()}
-                style={{
-                  padding: '4px 8px',
-                  backgroundColor: '#3b82f6',
-                  color: 'white',
-                  borderRadius: '4px',
-                  textDecoration: 'none',
-                  fontSize: '11px',
-                  textAlign: 'center',
-                  cursor: 'pointer',
-                  transition: 'background-color 0.2s',
-                  border: 'none'
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = '#2563eb';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = '#3b82f6';
-                }}
-              >
-                Download
-              </a>
-            )}
-          </div>
-        ))}
-      </div>
-      {machineId && organizationId && (step.end.getTime() - step.start.getTime()) >= 1000 && (
-        <a
-          href={constructStepLogUrl(step.start, step.end, machineId, organizationId)}
-          target="_blank"
-          rel="noopener noreferrer"
-          style={{
-            display: 'block',
-            marginTop: '8px',
-            color: '#3b82f6',
-            fontSize: '12px',
-            textDecoration: 'underline',
-            textAlign: 'center',
-          }}
-        >
-          View logs for this step
-        </a>
-      )}
-      <VideoModal
-        selectedVideo={selectedVideo}
-        onClose={closeVideoModal}
-      />
+      <VideoModal selectedVideo={selectedVideo} onClose={closeVideoModal} />
     </>
-  );
-};
+  )
+}
 
-export default StepVideosGrid;
+export default StepVideosGrid

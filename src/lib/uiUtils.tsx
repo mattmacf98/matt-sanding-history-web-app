@@ -5,23 +5,19 @@
  * @returns A JSX element with the formatted duration.
  */
 export const formatDurationMs = (ms: number): JSX.Element => {
-  const totalSeconds = Math.floor(ms / 1000);
-  const hours = Math.floor(totalSeconds / 3600);
-  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const totalSeconds = Math.floor(ms / 1000)
+  const hours = Math.floor(totalSeconds / 3600)
+  const minutes = Math.floor((totalSeconds % 3600) / 60)
 
-  let displayText: string;
+  let displayText: string
   if (hours > 0) {
-    displayText = `${hours}h ${minutes}m`;
+    displayText = `${hours}h ${minutes}m`
   } else {
-    displayText = `${minutes}m`;
+    displayText = `${minutes}m`
   }
 
-  return (
-    <span title={`${Math.floor(ms / 60000)} minutes`}>
-      {displayText}
-    </span>
-  );
-};
+  return <span title={`${Math.floor(ms / 60000)} minutes`}>{displayText}</span>
+}
 
 /**
  * Constructs a URL to the Viam app logs page filtered to a specific time range.
@@ -37,8 +33,8 @@ export const constructStepLogUrl = (
   machineId: string,
   organizationId: string
 ): string => {
-  const startParam = encodeURIComponent(startTime.toISOString());
-  const endParam = encodeURIComponent(endTime.toISOString());
-  
-  return `https://app.viam.com/machine/${machineId}/logs?start=${startParam}&end=${endParam}&org=${organizationId}`;
-};
+  const startParam = encodeURIComponent(startTime.toISOString())
+  const endParam = encodeURIComponent(endTime.toISOString())
+
+  return `https://app.viam.com/machine/${machineId}/logs?start=${startParam}&end=${endParam}&org=${organizationId}`
+}

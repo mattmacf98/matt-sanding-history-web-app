@@ -1,20 +1,20 @@
-import React, { useMemo } from 'react';
-import { Pass } from '../../lib/types';
-import { BinaryDataManager } from '../../lib/BinaryDataManager';
-import * as VIAM from "@viamrobotics/sdk";
-import { useViamClients } from '../../lib/contexts/ViamClientContext';
+import React, { useMemo } from 'react'
+import { Pass } from '../../lib/types'
+import { BinaryDataManager } from '../../lib/BinaryDataManager'
+import * as VIAM from '@viamrobotics/sdk'
+import { useViamClients } from '../../lib/contexts/ViamClientContext'
 
 interface PassFilesProps {
-  pass: Pass;
-  binaryDataManager: BinaryDataManager;
-  viamClient: VIAM.ViamClient;
-  fetchTimestamp: Date | null;
-  expandedFiles: Set<string>;
-  toggleFilesExpansion: (passId: string) => void;
-  fileSearchInputs: Record<string, string>;
-  handleFileSearchChange: (passId: string, value: string) => void;
-  debouncedFileSearchInputs: Record<string, string>;
-  partId: string;
+  pass: Pass
+  binaryDataManager: BinaryDataManager
+  viamClient: VIAM.ViamClient
+  fetchTimestamp: Date | null
+  expandedFiles: Set<string>
+  toggleFilesExpansion: (passId: string) => void
+  fileSearchInputs: Record<string, string>
+  handleFileSearchChange: (passId: string, value: string) => void
+  debouncedFileSearchInputs: Record<string, string>
+  partId: string
 }
 
 export const PassFiles: React.FC<PassFilesProps> = ({
@@ -28,75 +28,84 @@ export const PassFiles: React.FC<PassFilesProps> = ({
   debouncedFileSearchInputs,
   partId,
 }) => {
-  const { machineId, organizationId, viamClient } = useViamClients();
+  const { machineId, organizationId, viamClient } = useViamClients()
 
-  const passId = pass.pass_id;
+  const passId = pass.pass_id
 
   const handleDownload = async (file: VIAM.dataApi.BinaryData) => {
     try {
-      const data = await viamClient.dataClient.binaryDataByIds([file.metadata!.binaryDataId]);
+      const data = await viamClient.dataClient.binaryDataByIds([
+        file.metadata!.binaryDataId,
+      ])
       if (data.length > 0) {
-        const blob = new Blob([new Uint8Array(data[0].binary)]);
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = file.metadata?.fileName?.split('/').pop() || 'download';
-        document.body.appendChild(a);
-        a.click();
-        window.URL.revokeObjectURL(url);
-        document.body.removeChild(a);
+        const blob = new Blob([new Uint8Array(data[0].binary)])
+        const url = window.URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = file.metadata?.fileName?.split('/').pop() || 'download'
+        document.body.appendChild(a)
+        a.click()
+        window.URL.revokeObjectURL(url)
+        document.body.removeChild(a)
       }
     } catch (error) {
-      console.error('Error downloading file:', error);
-      alert('Failed to download file');
+      console.error('Error downloading file:', error)
+      alert('Failed to download file')
     }
-  };
+  }
 
   const passFiles = useMemo(() => {
-    const passStart = new Date(pass.start);
-    const passEnd = new Date(pass.end);
+    const passStart = new Date(pass.start)
+    const passEnd = new Date(pass.end)
 
-    return binaryDataManager.getPassFiles(passId, passStart, passEnd);
-  }, [pass, binaryDataManager]);
+    return binaryDataManager.getPassFiles(passId, passStart, passEnd)
+  }, [pass, binaryDataManager])
 
   const filteredPassFiles = useMemo(() => {
-    const searchTerm = (debouncedFileSearchInputs[passId] || '').toLowerCase();
-    if (!searchTerm) return passFiles;
+    const searchTerm = (debouncedFileSearchInputs[passId] || '').toLowerCase()
+    if (!searchTerm) return passFiles
 
-    return passFiles.filter(file => {
-      const fileName = file.fileName.split('/').pop()?.toLowerCase() || '';
-      const fullPath = file.fileName.toLowerCase() || '';
-      return fileName.includes(searchTerm) || fullPath.includes(searchTerm);
-    });
-  }, [passFiles, debouncedFileSearchInputs, passId]);
+    return passFiles.filter((file) => {
+      const fileName = file.fileName.split('/').pop()?.toLowerCase() || ''
+      const fullPath = file.fileName.toLowerCase() || ''
+      return fileName.includes(searchTerm) || fullPath.includes(searchTerm)
+    })
+  }, [passFiles, debouncedFileSearchInputs, passId])
 
   const filesCountDisplay = useMemo(() => {
-    const searchTerm = (debouncedFileSearchInputs[passId] || '').toLowerCase();
+    const searchTerm = (debouncedFileSearchInputs[passId] || '').toLowerCase()
     if (searchTerm) {
-      return `(showing ${filteredPassFiles.length} of ${passFiles.length})`;
+      return `(showing ${filteredPassFiles.length} of ${passFiles.length})`
     }
-    return `(${passFiles.length})`;
-  }, [passFiles.length, filteredPassFiles.length, debouncedFileSearchInputs, passId]);
+    return `(${passFiles.length})`
+  }, [
+    passFiles.length,
+    filteredPassFiles.length,
+    debouncedFileSearchInputs,
+    passId,
+  ])
 
-  const isLoading = fetchTimestamp && fetchTimestamp > pass.start;
+  const isLoading = fetchTimestamp && fetchTimestamp > pass.start
 
   if (isLoading && passFiles.length === 0) {
     return (
       <div className="pass-files-section" style={{}}>
-        <span style={{
-          display: 'inline-block',
-          width: '28px',
-          height: '28px',
-          border: '3px solid rgba(59, 130, 246, 0.2)',
-          borderTopColor: '#3b82f6',
-          borderRadius: '50%',
-          animation: 'spin 1s linear infinite'
-        }}></span>
+        <span
+          style={{
+            display: 'inline-block',
+            width: '28px',
+            height: '28px',
+            border: '3px solid rgba(59, 130, 246, 0.2)',
+            borderTopColor: '#3b82f6',
+            borderRadius: '50%',
+            animation: 'spin 1s linear infinite',
+          }}
+        ></span>
         <p style={{ marginTop: '12px', color: '#6b7280', fontSize: '14px' }}>
           Loading files...
         </p>
       </div>
-    );
+    )
   }
 
   return (
@@ -109,15 +118,19 @@ export const PassFiles: React.FC<PassFilesProps> = ({
           alignItems: 'center',
           gap: '6px',
           userSelect: 'none',
-          paddingLeft: '2px'
+          paddingLeft: '2px',
         }}
       >
-        <span style={{
-          display: 'inline-block',
-          transition: 'transform 0.2s',
-          transform: expandedFiles.has(passId) ? 'rotate(90deg)' : 'rotate(0deg)',
-          fontSize: '10px'
-        }}>
+        <span
+          style={{
+            display: 'inline-block',
+            transition: 'transform 0.2s',
+            transform: expandedFiles.has(passId)
+              ? 'rotate(90deg)'
+              : 'rotate(0deg)',
+            fontSize: '10px',
+          }}
+        >
           ▶
         </span>
         Files captured during this pass {filesCountDisplay}
@@ -125,7 +138,13 @@ export const PassFiles: React.FC<PassFilesProps> = ({
 
       {expandedFiles.has(passId) && passFiles.length > 0 && (
         <>
-          <div style={{ marginTop: '8px', marginLeft: '12px', marginBottom: '8px' }}>
+          <div
+            style={{
+              marginTop: '8px',
+              marginLeft: '12px',
+              marginBottom: '8px',
+            }}
+          >
             <input
               type="text"
               placeholder="Search files by filename..."
@@ -141,124 +160,140 @@ export const PassFiles: React.FC<PassFilesProps> = ({
                 border: '1px solid #e5e7eb',
                 borderRadius: '4px',
                 boxSizing: 'border-box',
-                backgroundColor: '#ffffff'
+                backgroundColor: '#ffffff',
               }}
             />
           </div>
-          <div style={{
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '0',
-            overflowY: 'auto',
-            maxHeight: '33dvh',
-            overflow: 'auto',
-            borderTop: '1px solid #e5e7eb',
-            margin: '0 0 0 0.5rem'
-          }}>
-            {filteredPassFiles
-              .map((file, fileIndex, filteredFiles) => {
+          <div
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '0',
+              overflowY: 'auto',
+              maxHeight: '33dvh',
+              overflow: 'auto',
+              borderTop: '1px solid #e5e7eb',
+              margin: '0 0 0 0.5rem',
+            }}
+          >
+            {filteredPassFiles.map((file, fileIndex, filteredFiles) => {
+              const fileName = file.fileName.split('/').pop() || 'Unknown file'
 
-                const fileName = file.fileName.split('/').pop() || 'Unknown file';
-
-                return (
+              return (
+                <div
+                  key={fileIndex}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    padding: '4px 6px',
+                    backgroundColor: '#f9fafb',
+                    borderBottom:
+                      fileIndex < filteredFiles.length - 1
+                        ? '1px solid #e5e7eb'
+                        : 'none',
+                    fontSize: '13px',
+                    minWidth: '280px',
+                    boxSizing: 'border-box',
+                    transition: 'background-color 0.2s',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = '#f3f4f6'
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = '#f9fafb'
+                  }}
+                >
                   <div
-                    key={fileIndex}
                     style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      padding: '4px 6px',
-                      backgroundColor: '#f9fafb',
-                      borderBottom: fileIndex < filteredFiles.length - 1 ? '1px solid #e5e7eb' : 'none',
-                      fontSize: '13px',
-                      minWidth: '280px',
-                      boxSizing: 'border-box',
-                      transition: 'background-color 0.2s'
-                    }}
-                    onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#f3f4f6'; }}
-                    onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = '#f9fafb'; }}
-                  >
-                    <div style={{
                       display: 'flex',
                       alignItems: 'center',
                       gap: '8px',
                       flex: 1,
                       minWidth: 0,
-                      overflow: 'hidden'
-                    }}>
-                      <span style={{
+                      overflow: 'hidden',
+                    }}
+                  >
+                    <span
+                      style={{
                         color: '#374151',
                         textOverflow: 'ellipsis',
                         overflow: 'hidden',
                         whiteSpace: 'nowrap',
-                        flex: 1
-                      }} title={file.fileName || fileName}>
-                        {fileName}
-                      </span>
-                      <span style={{
+                        flex: 1,
+                      }}
+                      title={file.fileName || fileName}
+                    >
+                      {fileName}
+                    </span>
+                    <span
+                      style={{
                         color: '#9ca3af',
                         fontSize: '12px',
                         whiteSpace: 'nowrap',
-                        flexShrink: 0
-                      }}>
-                        {file.timeRequested?.toLocaleTimeString() || ''}
-                      </span>
-                    </div>
-                    <a
-                      href="#"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        handleDownload(file.binaryData);
-                      }}
-                      style={{
-                        marginLeft: '12px',
-                        padding: '6px 8px',
-                        backgroundColor: '#3b82f6',
-                        color: 'white',
-                        borderRadius: '4px',
-                        textDecoration: 'none',
-                        fontSize: '12px',
-                        whiteSpace: 'nowrap',
                         flexShrink: 0,
-                        cursor: 'pointer',
-                        display: 'inline-block',
-                        border: 'none'
                       }}
                     >
-                      Download
-                    </a>
-                    <a
-                      href={
-                        `https://storage.cloud.google.com/viam-data-${organizationId}/` +
-                        `${organizationId}/${machineId}/${partId}/files/` +
-                        `${file.binaryDataId.split("/").pop()}` +
-                        `${file.fileName}.gz`
-                      }
-                      rel="noreferrer"
-                      target="_blank"
-                      style={{
-                        marginLeft: '12px',
-                        padding: '6px 8px',
-                        backgroundColor: '#1d4ed8',
-                        color: 'white',
-                        borderRadius: '4px',
-                        fontSize: '12px',
-                        border: 'none',
-                        textDecoration: 'none'
-                      }}
-                    >
-                      Download from GCS
-                    </a>
+                      {file.timeRequested?.toLocaleTimeString() || ''}
+                    </span>
                   </div>
-                );
-              })}
+                  <a
+                    href="#"
+                    onClick={(e) => {
+                      e.preventDefault()
+                      e.stopPropagation()
+                      handleDownload(file.binaryData)
+                    }}
+                    style={{
+                      marginLeft: '12px',
+                      padding: '6px 8px',
+                      backgroundColor: '#3b82f6',
+                      color: 'white',
+                      borderRadius: '4px',
+                      textDecoration: 'none',
+                      fontSize: '12px',
+                      whiteSpace: 'nowrap',
+                      flexShrink: 0,
+                      cursor: 'pointer',
+                      display: 'inline-block',
+                      border: 'none',
+                    }}
+                  >
+                    Download
+                  </a>
+                  <a
+                    href={
+                      `https://storage.cloud.google.com/viam-data-${organizationId}/` +
+                      `${organizationId}/${machineId}/${partId}/files/` +
+                      `${file.binaryDataId.split('/').pop()}` +
+                      `${file.fileName}.gz`
+                    }
+                    rel="noreferrer"
+                    target="_blank"
+                    style={{
+                      marginLeft: '12px',
+                      padding: '6px 8px',
+                      backgroundColor: '#1d4ed8',
+                      color: 'white',
+                      borderRadius: '4px',
+                      fontSize: '12px',
+                      border: 'none',
+                      textDecoration: 'none',
+                    }}
+                  >
+                    Download from GCS
+                  </a>
+                </div>
+              )
+            })}
             {filteredPassFiles.length === 0 && fileSearchInputs[passId] && (
-              <div style={{
-                padding: '12px',
-                color: '#6b7280',
-                fontSize: '13px'
-              }}>
+              <div
+                style={{
+                  padding: '12px',
+                  color: '#6b7280',
+                  fontSize: '13px',
+                }}
+              >
                 No files match &ldquo;{fileSearchInputs[passId]}&rdquo;
               </div>
             )}
@@ -267,10 +302,17 @@ export const PassFiles: React.FC<PassFilesProps> = ({
       )}
 
       {passFiles.length === 0 && !isLoading && (
-        <p style={{ fontSize: '13px', color: '#6b7280', marginTop: '8px', paddingLeft: '30px' }}>
+        <p
+          style={{
+            fontSize: '13px',
+            color: '#6b7280',
+            marginTop: '8px',
+            paddingLeft: '30px',
+          }}
+        >
           No files found for this pass.
         </p>
       )}
     </div>
-  );
-};
+  )
+}

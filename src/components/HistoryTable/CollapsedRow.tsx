@@ -166,8 +166,8 @@ export const CollapsedRow = ({
                       hasNotes && hasDiagnosis
                         ? 'This pass has notes and diagnosis'
                         : hasNotes
-                        ? 'This pass has notes'
-                        : 'This pass has diagnosis'
+                          ? 'This pass has notes'
+                          : 'This pass has diagnosis'
                     }
                   >
                     📝
@@ -223,7 +223,9 @@ export const CollapsedRow = ({
           : '—'}
       </td>
       <td className="text-zinc-700">
-        {pass.selected_num_rounds !== undefined ? pass.selected_num_rounds : '—'}
+        {pass.selected_num_rounds !== undefined
+          ? pass.selected_num_rounds
+          : '—'}
       </td>
       <td className="text-zinc-700">
         {pass.err_string ? (
@@ -248,8 +250,8 @@ export const CollapsedRow = ({
               {expandedErrors.has(pass.pass_id)
                 ? pass.err_string
                 : pass.err_string.length > 200
-                ? `${pass.err_string.substring(0, 200)}...`
-                : pass.err_string}
+                  ? `${pass.err_string.substring(0, 200)}...`
+                  : pass.err_string}
             </span>
             {pass.err_string.length > 200 && (
               <button

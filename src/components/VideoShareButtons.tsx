@@ -1,13 +1,13 @@
-import React from 'react';
-import { useClipboardCopy } from '../lib/hooks/useClipboardCopy';
+import React from 'react'
+import { useClipboardCopy } from '../lib/hooks/useClipboardCopy'
 
 interface VideoShareButtonsProps {
   /** Base URL to share */
-  baseUrl: string;
+  baseUrl: string
   /** (Optional)Additional buttons to render before the share buttons */
-  children?: React.ReactNode;
+  children?: React.ReactNode
   /** Ref to video element */
-  videoRef?: React.RefObject<HTMLVideoElement>;
+  videoRef?: React.RefObject<HTMLVideoElement>
 }
 
 /**
@@ -19,28 +19,32 @@ const VideoShareButtons: React.FC<VideoShareButtonsProps> = ({
   videoRef,
   children,
 }) => {
-  const { copied: videoShared, copyToClipboard: copyVideoLink } = useClipboardCopy();
-  const { copied: videoSharedFromCurrentLocation, copyToClipboard: copyVideoLinkFromLocation } = useClipboardCopy();
+  const { copied: videoShared, copyToClipboard: copyVideoLink } =
+    useClipboardCopy()
+  const {
+    copied: videoSharedFromCurrentLocation,
+    copyToClipboard: copyVideoLinkFromLocation,
+  } = useClipboardCopy()
 
   const handleShare = () => {
-    copyVideoLink(baseUrl);
-  };
+    copyVideoLink(baseUrl)
+  }
 
   const handleShareFromCurrentLocation = () => {
-    const videoElement = videoRef?.current;
+    const videoElement = videoRef?.current
     if (!videoElement) {
-      return;
+      return
     }
 
-    const currentTime = videoElement.currentTime;
-    
-    const [urlWithoutQuery, queryString] = baseUrl.split('?');
-    const params = new URLSearchParams(queryString || '');
-    params.set('loc', currentTime.toString());
-    const url = `${urlWithoutQuery}?${params.toString()}`;
+    const currentTime = videoElement.currentTime
 
-    copyVideoLinkFromLocation(url);
-  };
+    const [urlWithoutQuery, queryString] = baseUrl.split('?')
+    const params = new URLSearchParams(queryString || '')
+    params.set('loc', currentTime.toString())
+    const url = `${urlWithoutQuery}?${params.toString()}`
+
+    copyVideoLinkFromLocation(url)
+  }
 
   return (
     <div className="video-modal-buttons">
@@ -50,7 +54,7 @@ const VideoShareButtons: React.FC<VideoShareButtonsProps> = ({
         title="Share a link to the video's detail page"
         className="video-modal-button primary"
         style={{
-          width: '90px'
+          width: '90px',
         }}
         onClick={handleShare}
       >
@@ -60,15 +64,16 @@ const VideoShareButtons: React.FC<VideoShareButtonsProps> = ({
         title="Share link to the video's detail page from the current location within the video"
         className="video-modal-button secondary"
         style={{
-          width: '190px'
+          width: '190px',
         }}
         onClick={handleShareFromCurrentLocation}
       >
-        {videoSharedFromCurrentLocation ? 'Link copied!' : 'Share link from current location'}
+        {videoSharedFromCurrentLocation
+          ? 'Link copied!'
+          : 'Share link from current location'}
       </button>
     </div>
-  );
-};
+  )
+}
 
-export default VideoShareButtons;
-
+export default VideoShareButtons
