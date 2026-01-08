@@ -8,33 +8,36 @@ import { ModalProvider } from './lib/contexts/ModalContext'
 import { FilesProvider } from './lib/contexts/FilesContext'
 import { PassProvider } from './lib/contexts/PassContext'
 import { PaginationProvider } from './lib/contexts/PaginationContext'
+import { ToastProvider } from './lib/contexts/ToastContext'
 
 function Root() {
   return (
-    <EnvironmentProvider>
-      <ViamClientProvider>
-        <FilesProvider>
-          <PassProvider>
-            <PaginationProvider>
-              <ModalProvider>
-                <HashRouter>
-                  <Routes>
-                    {/* Main list view - served at /machine/:machineInfo#/ */}
-                    <Route path="/" element={<App />} />
+    <ToastProvider>
+      <EnvironmentProvider>
+        <ViamClientProvider>
+          <FilesProvider>
+            <PassProvider>
+              <PaginationProvider>
+                <ModalProvider>
+                  <HashRouter>
+                    <Routes>
+                      {/* Main list view - served at /machine/:machineInfo#/ */}
+                      <Route path="/" element={<App />} />
 
-                    {/* Video detail view - served at /machine/:machineInfo#/videos/:videoId */}
-                    <Route
-                      path="/videos/:videoId"
-                      element={<VideoDetailPage />}
-                    />
-                  </Routes>
-                </HashRouter>
-              </ModalProvider>
-            </PaginationProvider>
-          </PassProvider>
-        </FilesProvider>
-      </ViamClientProvider>
-    </EnvironmentProvider>
+                      {/* Video detail view - served at /machine/:machineInfo#/videos/:videoId */}
+                      <Route
+                        path="/videos/:videoId"
+                        element={<VideoDetailPage />}
+                      />
+                    </Routes>
+                  </HashRouter>
+                </ModalProvider>
+              </PaginationProvider>
+            </PassProvider>
+          </FilesProvider>
+        </ViamClientProvider>
+      </EnvironmentProvider>
+    </ToastProvider>
   )
 }
 

@@ -5,6 +5,7 @@ import { Step } from '../lib/types'
 import { generateVideo } from '../lib/videoUtils'
 import { VideoPollingManager } from '../lib/videoPollingManager'
 import { constructStepLogUrl } from '../lib/uiUtils'
+import { useToast } from '../lib/contexts/ToastContext'
 
 interface StepVideosGridProps {
   stepVideos: VIAM.dataApi.BinaryData[]
@@ -30,7 +31,7 @@ const StepVideosGrid: React.FC<StepVideosGridProps> = ({
   const [selectedVideo, setSelectedVideo] =
     useState<VIAM.dataApi.BinaryData | null>(null)
   const [modalVideoUrl, setModalVideoUrl] = useState<string | null>(null)
-
+  const { addMessage } = useToast()
   const [isPolling, setIsPolling] = useState<boolean>(false)
   const requestIdRef = useRef<string | null>(null)
   const pollingManager = VideoPollingManager.getInstance()
@@ -117,6 +118,7 @@ const StepVideosGrid: React.FC<StepVideosGridProps> = ({
       })
     } catch (error) {
       console.error('Error generating video:', error)
+      addMessage({ message: `Error generating video: ${error}`, type: 'error' })
       setIsPolling(false)
     }
   }
