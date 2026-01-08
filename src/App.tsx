@@ -43,7 +43,7 @@ function App() {
   useEffect(() => {
     if (passSummaries.length > 0 && viamClient) {
       const earliestVideoTime = passSummaries[passSummaries.length - 1].start
-      fetchFiles(earliestVideoTime, true)
+      fetchFiles(earliestVideoTime)
     }
   }, [passSummaries, viamClient])
 
