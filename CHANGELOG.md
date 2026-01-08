@@ -1,5 +1,11 @@
 # sanding-monitoring-web-app
 
+## 1.5.1
+
+### Patch Changes
+
+- 3c8600c: update module id
+
 ## 1.5.0
 
 ### Minor Changes
