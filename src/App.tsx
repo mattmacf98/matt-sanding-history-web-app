@@ -57,7 +57,7 @@ function App() {
       (day) => passSummariesByDay[day]
     )
     setCurrentPassSummaries(currentPassSummaries)
-  }, [passSummariesByDay, currentPage])
+  }, [passSummariesByDay, currentPage, sortedDays])
 
   if (legacy) {
     return (

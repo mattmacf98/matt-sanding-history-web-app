@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "start": "npm run build && npx serve -s dist",
     "build": "vite build",
     "preview": "vite preview",
     "sanity": "npm run typecheck && npm run lint",
