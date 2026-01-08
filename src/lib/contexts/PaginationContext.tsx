@@ -46,7 +46,7 @@ export function PaginationProvider({ children }: { children: ReactNode }) {
     setSortedDays(sortedDays)
     setTotalEntries(passSummaries.length)
     setCurrentNumDaysDisplayed(currentDays.length)
-  }, [passSummariesByDay])
+  }, [passSummariesByDay, passSummaries])
 
   return (
     <PaginationContext.Provider

@@ -1,10 +1,4 @@
-import {
-  createContext,
-  useContext,
-  useState,
-  useEffect,
-  ReactNode,
-} from 'react'
+import { createContext, useContext, useState, ReactNode } from 'react'
 import * as VIAM from '@viamrobotics/sdk'
 import { useViamClients } from './ViamClientContext'
 import { Timestamp } from '@bufbuild/protobuf'
@@ -137,8 +131,6 @@ export function FilesProvider({ children }: { children: ReactNode }) {
       setFetchTimestamp(null)
     }
   }
-
-  useEffect(() => {}, [])
 
   return (
     <FilesContext.Provider
