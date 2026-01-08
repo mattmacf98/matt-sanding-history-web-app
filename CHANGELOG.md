@@ -1,5 +1,11 @@
 # sanding-monitoring-web-app
 
+## 1.5.0
+
+### Minor Changes
+
+- 62a199d: add embeded motion tools snapshot modal
+
 ## 1.4.1
 
 ### Patch Changes
